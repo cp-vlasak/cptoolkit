@@ -24,6 +24,7 @@
       <button type="button" class="toolbar-btn" id="import-json-btn">Import JSON</button>
       <button type="button" class="toolbar-btn" id="export-json-btn">Export JSON</button>
       <button type="button" class="toolbar-btn" id="import-css-btn">Import CSS File</button>
+      <button type="button" class="toolbar-btn help" id="help-btn">?</button>
       <input type="file" id="import-json-file" accept=".json,application/json" hidden />
       <input type="file" id="import-css-file" accept=".css,text/css" hidden />
     </section>
@@ -104,6 +105,99 @@
         <div class="spacer"></div>
         <button type="button" class="toolbar-btn" id="rule-cancel-btn">Cancel</button>
         <button type="button" class="toolbar-btn primary" id="rule-save-btn">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="help-modal-overlay" style="display: none;">
+    <div class="modal help-modal">
+      <div class="modal-header">
+        <h3>How to Use Custom CSS Deployments</h3>
+        <button type="button" class="modal-close" id="help-modal-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="help-section">
+          <h4>What is this?</h4>
+          <p>Custom CSS Deployments lets you create reusable CSS rules that automatically inject into CivicPlus CMS pages when they load. Use it to tweak admin UI styling, fix layout quirks, or apply consistent visual overrides across pages.</p>
+        </div>
+
+        <div class="help-section">
+          <h4>Creating a Rule</h4>
+          <ol>
+            <li>Click <strong>New Rule</strong> and give it a descriptive name.</li>
+            <li>Choose a <strong>Scope</strong>:
+              <ul>
+                <li><strong>Admin Pages Only</strong> (recommended) &mdash; only applies on <code>/Admin/</code> paths. Prevents accidental changes to public-facing pages.</li>
+                <li><strong>Any Page on This Site</strong> &mdash; applies everywhere on the domain, including the live site front.</li>
+              </ul>
+            </li>
+            <li>Pick a <strong>Page Match Type</strong> and enter a <strong>Match Value</strong> to target specific pages.</li>
+            <li>Write your CSS in the editor (or click <strong>Load CSS File</strong> to import a <code>.css</code> file).</li>
+            <li>Click <strong>Save Rule</strong>.</li>
+          </ol>
+        </div>
+
+        <div class="help-section">
+          <h4>Page Match Types</h4>
+          <table class="help-table">
+            <thead>
+              <tr><th>Type</th><th>Behavior</th><th>Example</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Path Starts With</td>
+                <td>Matches if the URL path begins with the value</td>
+                <td><code>/Admin/DesignCenter/Themes</code></td>
+              </tr>
+              <tr>
+                <td>Exact Path</td>
+                <td>Matches only if the path is exactly the value</td>
+                <td><code>/Admin/DesignCenter/Layouts</code></td>
+              </tr>
+              <tr>
+                <td>Path Contains</td>
+                <td>Matches if the path includes the value anywhere</td>
+                <td><code>/DesignCenter/</code></td>
+              </tr>
+              <tr>
+                <td>URL Contains</td>
+                <td>Matches against the full URL (including query string)</td>
+                <td><code>themeID=1</code></td>
+              </tr>
+              <tr>
+                <td>Regex on Path</td>
+                <td>Matches the path against a regular expression</td>
+                <td><code>^/Admin/DesignCenter/(Themes|Layouts)</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="help-section">
+          <h4>Managing Rules</h4>
+          <ul>
+            <li><strong>Enable/Disable</strong> &mdash; toggle a rule without deleting it. Disabled rules are saved but won't inject CSS.</li>
+            <li><strong>Duplicate</strong> &mdash; create a copy of an existing rule to use as a starting point.</li>
+            <li><strong>Export/Import JSON</strong> &mdash; share rules with teammates or back them up. You can export individual rules or all rules at once.</li>
+            <li><strong>Import CSS File</strong> &mdash; quickly create a new rule from a <code>.css</code> file. You'll be prompted to set the page match before saving.</li>
+          </ul>
+        </div>
+
+        <div class="help-section">
+          <h4>Tips</h4>
+          <ul>
+            <li>Rules are stored locally in your browser. They are <strong>not</strong> synced to other machines unless you export and import the JSON.</li>
+            <li>Multiple rules can match the same page &mdash; all matching CSS is injected in rule-list order.</li>
+            <li>If the tool is disabled in the popup toggle, no rules will deploy until it is re-enabled.</li>
+            <li>CSS is injected as a <code>&lt;style&gt;</code> tag into the page, so standard CSS specificity applies. Use more specific selectors or <code>!important</code> if your styles aren't taking effect.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div class="spacer"></div>
+        <button type="button" class="toolbar-btn primary" id="help-modal-ok-btn">Got It</button>
       </div>
     </div>
   </div>
