@@ -161,6 +161,60 @@
       text-align: center;
       padding: 40px;
       color: #666;
+    }.sub-setting {
+      margin-left: 30px;
+      margin-top: 10px;
+      padding: 10px 12px;
+      border: 1px solid #ececec;
+      border-radius: 4px;
+      background: #fff;
+      cursor: default;
+    }
+
+    .sub-setting-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      cursor: default;
+    }
+
+    .sub-setting-select {
+      width: 100%;
+      max-width: 380px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 12px;
+      color: #222;
+      background: #fff;
+    }
+
+    .sub-setting-button {
+      border: 1px solid #af282f;
+      background: #fff;
+      color: #af282f;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 10px;
+      cursor: pointer;
+      line-height: 1;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .sub-setting-button:hover {
+      background: #af282f;
+      color: #fff;
+    }
+
+    .sub-setting-hint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.45;
     }
     
     .note {
@@ -175,6 +229,11 @@
     
     /* Focus styles for ADA compliance */
     input[type="checkbox"]:focus {
+      outline: 2px solid #af282f;
+      outline-offset: 2px;
+    }
+
+    select:focus {
       outline: 2px solid #af282f;
       outline-offset: 2px;
     }
@@ -205,14 +264,13 @@
   
   <div class="note">
     <strong>Note:</strong> Changes take effect immediately. Refresh any open CivicPlus pages to see changes.
-  </div>
-  
-  <div id="tools-container">
+  </div><div id="tools-container">
     <div class="loading">Loading tools configuration...</div>
   </div>
   
-  <div class="status" id="status">✓ Settings saved!</div>
+  <div class="status" id="status">Settings saved!</div>
   
   <script src="../js/options.js"></script>
 </body>
 </html>
+

@@ -207,23 +207,29 @@
       outline: 2px solid #af282f;
       outline-offset: 2px;
     }
-    #tool-mini-ide {
+    #tool-mini-ide,
+    #tool-custom-css-deployer {
       width: calc(100% - 54px);
       position: relative;
     }
-    #tool-mini-ide.enabled {
+    #tool-mini-ide.enabled,
+    #tool-custom-css-deployer.enabled {
       background: #e8f5e9;
     }
-    #tool-mini-ide.enabled:hover:not(:has(.tool-snippets-btn:hover)) {
+    #tool-mini-ide.enabled:hover:not(:has(.tool-snippets-btn:hover)),
+    #tool-custom-css-deployer.enabled:hover:not(:has(.tool-snippets-btn:hover)) {
       background: #d7ecd9;
     }
-    #tool-mini-ide:hover:not(.enabled):not(:has(.tool-snippets-btn:hover)) {
+    #tool-mini-ide:hover:not(.enabled):not(:has(.tool-snippets-btn:hover)),
+    #tool-custom-css-deployer:hover:not(.enabled):not(:has(.tool-snippets-btn:hover)) {
       background: #ebebeb;
     }
-    #tool-mini-ide:has(.tool-snippets-btn:hover) {
+    #tool-mini-ide:has(.tool-snippets-btn:hover),
+    #tool-custom-css-deployer:has(.tool-snippets-btn:hover) {
       background: #e8f5e9;
     }
-    #tool-mini-ide:not(.enabled):has(.tool-snippets-btn:hover) {
+    #tool-mini-ide:not(.enabled):has(.tool-snippets-btn:hover),
+    #tool-custom-css-deployer:not(.enabled):has(.tool-snippets-btn:hover) {
       background: #f5f5f5;
     }
     .tool-snippets-btn {
@@ -276,7 +282,7 @@
         <button id="upload-capture" class="capture-btn">Send</button>
       </div>
     </div>
-    
+
     <div id="tools-container">
       <div class="loading">Loading tools...</div>
     </div>
