@@ -447,6 +447,16 @@
     });
   }
 
+  function openHelpModal() {
+    var overlay = byId("help-modal-overlay");
+    if (overlay) overlay.style.display = "flex";
+  }
+
+  function closeHelpModal() {
+    var overlay = byId("help-modal-overlay");
+    if (overlay) overlay.style.display = "none";
+  }
+
   function bindToolbarEvents() {
     byId("new-rule-btn").addEventListener("click", function() {
       openRuleModal(null, null);
@@ -469,6 +479,8 @@
     byId("import-css-btn").addEventListener("click", function() {
       byId("import-css-file").click();
     });
+
+    byId("help-btn").addEventListener("click", openHelpModal);
 
     byId("import-json-file").addEventListener("change", function(event) {
       var file = event.target.files && event.target.files[0];
@@ -575,9 +587,18 @@
       }
     });
 
+    byId("help-modal-close").addEventListener("click", closeHelpModal);
+    byId("help-modal-ok-btn").addEventListener("click", closeHelpModal);
+    byId("help-modal-overlay").addEventListener("click", function(event) {
+      if (event.target === event.currentTarget) {
+        closeHelpModal();
+      }
+    });
+
     document.addEventListener("keydown", function(event) {
       if (event.key === "Escape") {
         closeRuleModal();
+        closeHelpModal();
       }
     });
   }
