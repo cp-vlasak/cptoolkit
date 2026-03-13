@@ -7,6 +7,26 @@ let captureStatus = {
 };
 const MCP_ENDPOINT_KEY = 'mcp-capture-endpoint';
 const MCP_DEFAULT_ENDPOINT = 'http://localhost:9001/collect';
+const GITHUB_REPO = 'cp-vlasak/cptoolkit';
+const DOWNLOAD_PAGE = 'https://cp-vlasak.github.io/cptoolkit/';
+
+async function checkForUpdate() {
+  var updateDiv = document.getElementById('update-status');
+  try {
+    var currentVersion = chrome.runtime.getManifest().version;
+    var resp = await fetch('https://api.github.com/repos/' + GITHUB_REPO + '/releases/latest');
+    if (!resp.ok) return;
+    var release = await resp.json();
+    var latestTag = (release.tag_name || '').replace(/^v/, '');
+    if (latestTag && latestTag !== currentVersion) {
+      updateDiv.innerHTML = '<i class="fas fa-arrow-circle-up"></i> Update available: v' + latestTag + ' (you have v' + currentVersion + '). Click to download.';
+      updateDiv.style.display = '';
+      updateDiv.addEventListener('click', function() {
+        chrome.tabs.create({ url: DOWNLOAD_PAGE });
+      });
+    }
+  } catch (e) { /* silently fail if offline or rate-limited */ }
+}
 
 // Tool categories - same as options.js
 const categories = {
@@ -465,4 +485,5 @@ document.addEventListener('DOMContentLoaded', () => {
   loadToolsAndSettings();
   loadCaptureSettings();
   refreshCaptureStatus();
+  checkForUpdate();
 });
