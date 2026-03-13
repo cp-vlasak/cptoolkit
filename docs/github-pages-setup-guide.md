@@ -25,8 +25,8 @@ Find and replace these URLs with your own:
 
 | Find | Replace with |
 |------|-------------|
-| `CodyGantCivic/MV3-Toolkit` | `<your-username>/<your-repo>` |
-| `codygantcivic.github.io/MV3-Toolkit` | `<your-username>.github.io/<your-repo>` |
+| `cp-vlasak/cptoolkit` | `<your-username>/<your-repo>` |
+| `cp-vlasak.github.io/cptoolkit` | `<your-username>.github.io/<your-repo>` |
 
 There are 3 places to update:
 - The download button `href` (line with `releases/latest/download/mv3-toolkit.zip`)
@@ -38,8 +38,8 @@ There are 3 places to update:
 Find these two lines near the top of the file:
 
 ```javascript
-const GITHUB_REPO = 'CodyGantCivic/MV3-Toolkit';
-const DOWNLOAD_PAGE = 'https://codygantcivic.github.io/MV3-Toolkit/';
+const GITHUB_REPO = 'cp-vlasak/cptoolkit';
+const DOWNLOAD_PAGE = 'https://cp-vlasak.github.io/cptoolkit/';
 ```
 
 Change them to point to your fork:

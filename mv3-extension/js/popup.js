@@ -7,8 +7,8 @@ let captureStatus = {
 };
 const MCP_ENDPOINT_KEY = 'mcp-capture-endpoint';
 const MCP_DEFAULT_ENDPOINT = 'http://localhost:9001/collect';
-const GITHUB_REPO = 'CodyGantCivic/MV3-Toolkit';
-const DOWNLOAD_PAGE = 'https://codygantcivic.github.io/MV3-Toolkit/';
+const GITHUB_REPO = 'cp-vlasak/cptoolkit';
+const DOWNLOAD_PAGE = 'https://cp-vlasak.github.io/cptoolkit/';
 
 // Tool categories - same as options.js
 const categories = {
