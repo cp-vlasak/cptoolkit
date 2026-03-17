@@ -52,6 +52,13 @@
     "version-introduced": "1.5.9",
     "help-text": "Allows you to upload multiple Quick Links at a single time via the appended 'Post Items' button."
   },
+  "cp-InfoAdvancedImportExport": {
+    "name": "Info Advanced Import/Export",
+    "description": "Export and import Info Advanced item form JSON (including Froala content capture).",
+    "enabled-by-default": true,
+    "version-introduced": "1.1.2",
+    "help-text": "On /Admin/InfoII.aspx, adds an Info JSON button that opens a modal to export the current item form to JSON or import JSON back into the current Add/Modify item form. Includes copy/download actions and captures visible Froala editor HTML."
+  },
   "download-xml-css": {
     "name": "Download XML/CSS",
     "description": "Adds the ability to download a layout's XML and/or CSS from the Layout Manager",

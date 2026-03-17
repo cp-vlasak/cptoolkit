@@ -79,6 +79,7 @@ function categorizeTools() {
       "xml-change-alerts",
       "cp-MultipleCategoryUpload",
       "cp-MultipleItemUpload",
+      "cp-InfoAdvancedImportExport",
     ],
     "UI Enhancements": [
       "title-changer",
