@@ -315,29 +315,32 @@
       overlay.id = IMP_MODAL_ID;
       overlay.innerHTML =
         '<style>#' + IMP_MODAL_ID + '{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:Arial,Helvetica,sans-serif}' +
-        '#' + IMP_MODAL_ID + ' .d{background:#fff;border-radius:8px;width:980px;max-width:95vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3)}' +
+        '#' + IMP_MODAL_ID + ' .d{background:#fff;border-radius:8px;width:1060px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 10px 40px rgba(0,0,0,.3)}' +
         '#' + IMP_MODAL_ID + ' .h{padding:16px 20px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center}' +
         '#' + IMP_MODAL_ID + ' .h h3{margin:0;font-size:20px;font-weight:700;color:#1f2f3f}' +
         '#' + IMP_MODAL_ID + ' .x{background:none;border:none;font-size:24px;line-height:1;cursor:pointer}' +
         '#' + IMP_MODAL_ID + ' .tabs{display:flex;gap:0;border-bottom:1px solid #e0e0e0;padding:0 14px;background:#f9fbfd}' +
         '#' + IMP_MODAL_ID + ' .tab{border:none;background:transparent;padding:12px 14px;font-size:13px;font-weight:600;letter-spacing:.02em;color:#4d5f70;cursor:pointer}' +
         '#' + IMP_MODAL_ID + ' .tab.active{color:#133b5f;box-shadow:inset 0 -2px 0 #1f557f}' +
-        '#' + IMP_MODAL_ID + ' .b{padding:14px;display:flex;flex-direction:column;gap:12px;overflow:hidden;flex:1 1 auto;min-height:0}' +
+        '#' + IMP_MODAL_ID + ' .b{padding:14px;display:flex;flex-direction:column;gap:14px;overflow:hidden;flex:1 1 auto;min-height:0}' +
         '#' + IMP_MODAL_ID + ' .panel{display:none;min-height:0;flex:1 1 auto}' +
         '#' + IMP_MODAL_ID + ' .panel.active{display:flex;flex-direction:column}' +
         '#' + IMP_MODAL_ID + ' .lib{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}' +
-        '#' + IMP_MODAL_ID + ' .list{padding:2px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;overflow:auto;min-height:0;max-height:100%}' +
+        '#' + IMP_MODAL_ID + ' .list{padding:4px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;overflow:auto;min-height:0;max-height:100%}' +
         '#' + IMP_MODAL_ID + ' .row{position:relative;border:1px solid #d0d8e0;border-radius:8px;background:#fff;box-shadow:0 2px 8px rgba(14,30,45,.06)}' +
         '#' + IMP_MODAL_ID + ' .row:hover{border-color:#b8c7d5;box-shadow:0 6px 14px rgba(14,30,45,.10)}' +
-        '#' + IMP_MODAL_ID + ' .item{border:none;background:transparent;border-radius:8px;padding:36px 12px 12px;text-align:left;font-size:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:132px;width:100%}' +
+        '#' + IMP_MODAL_ID + ' .item{border:none;background:transparent;border-radius:8px;padding:48px 14px 14px;text-align:left;font-size:12px;cursor:pointer;display:flex;flex-direction:column;gap:6px;min-height:158px;width:100%}' +
         '#' + IMP_MODAL_ID + ' .item.is-dark{background:#1f2a36}' +
         '#' + IMP_MODAL_ID + ' .item.is-dark .item-name{color:#eef5fb}' +
         '#' + IMP_MODAL_ID + ' .item.is-dark .item-meta,#' + IMP_MODAL_ID + ' .item.is-dark .item-snippet{color:#c7d6e4}' +
+        '#' + IMP_MODAL_ID + ' .item:focus{outline:2px solid #af282f;outline-offset:2px}' +
         '#' + IMP_MODAL_ID + ' .item-name{font-weight:700;color:#1f2f3f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
         '#' + IMP_MODAL_ID + ' .item-meta{font-size:11px;color:#4a5a68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-        '#' + IMP_MODAL_ID + ' .item-snippet{font-size:11px;color:#6a7682;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:42px}' +
-        '#' + IMP_MODAL_ID + ' .row-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;z-index:2}' +
-        '#' + IMP_MODAL_ID + ' .act{width:24px;height:24px;border:1px solid #ccd6e0;background:#f6f9fc;color:#415569;border-radius:4px;cursor:pointer;line-height:1;font-size:12px;padding:0}' +
+        '#' + IMP_MODAL_ID + ' .item-snippet{font-size:11px;color:#6a7682;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:44px}' +
+        '#' + IMP_MODAL_ID + ' .row-actions{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:2}' +
+        '#' + IMP_MODAL_ID + ' .act{min-width:28px;height:26px;border:1px solid #ccd6e0;background:#f6f9fc;color:#415569;border-radius:4px;cursor:pointer;line-height:1;font-size:11px;font-weight:600;padding:0 8px}' +
+        '#' + IMP_MODAL_ID + ' .act.preview-pill{position:absolute;top:8px;left:8px;z-index:2;min-width:0;height:24px;padding:0 12px;border:none;background:#af282f;color:#fff;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;box-shadow:0 2px 8px rgba(175,40,47,.35)}' +
+        '#' + IMP_MODAL_ID + ' .act.preview-pill:hover{background:#c3343b}' +
         '#' + IMP_MODAL_ID + ' .act.active{background:#1f2a36;border-color:#1f2a36;color:#fff}' +
         '#' + IMP_MODAL_ID + ' .act:hover{background:#2b5f91;border-color:#2b5f91;color:#fff}' +
         '#' + IMP_MODAL_ID + ' .act.del:hover{background:#8f1f25;border-color:#8f1f25}' +
@@ -345,7 +348,7 @@
         '#' + IMP_MODAL_ID + ' textarea{width:100%;height:320px;border:1px solid #cfd7df;border-radius:6px;padding:12px;font-family:Consolas,Monaco,Courier New,monospace;font-size:12px;box-sizing:border-box;resize:vertical}' +
         '#' + IMP_MODAL_ID + ' .s{margin-top:8px;font-size:12px;color:#555}' +
         '#' + IMP_MODAL_ID + ' .f{padding:16px 20px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;gap:8px}' +
-        '#' + IMP_MODAL_ID + ' .btn{padding:8px 12px;border:none;border-radius:4px;font-size:14px;cursor:pointer;line-height:normal !important}' +
+        '#' + IMP_MODAL_ID + ' .btn{padding:8px 14px;border:none;border-radius:4px;font-size:14px;cursor:pointer;line-height:normal !important}' +
         '#' + IMP_MODAL_ID + ' .p{background:#af282f;color:#fff} .q{background:#e0e0e0;color:#333}</style>' +
         '<div class="d"><div class="h"><h3>Import Info Advanced Item JSON</h3><button class="x" id="cp-info-imp-x">&times;</button></div>' +
         '<div class="tabs"><button class="tab active" data-tab="library">Library</button><button class="tab" data-tab="paste">Paste JSON</button></div>' +
@@ -583,10 +586,10 @@
 
             var previewBtn = document.createElement("button");
             previewBtn.type = "button";
-            previewBtn.className = "act";
+            previewBtn.className = "act preview-pill";
             previewBtn.title = "Preview";
             previewBtn.setAttribute("aria-label", "Preview");
-            previewBtn.textContent = "◱";
+            previewBtn.textContent = "Preview";
             previewBtn.addEventListener("click", function(ev) {
               ev.preventDefault();
               ev.stopPropagation();
@@ -598,7 +601,7 @@
             editBtn.className = "act";
             editBtn.title = "Rename";
             editBtn.setAttribute("aria-label", "Rename");
-            editBtn.textContent = "✎";
+            editBtn.innerHTML = "&#9998;";
             editBtn.addEventListener("click", function(ev) {
               ev.preventDefault();
               ev.stopPropagation();
@@ -633,7 +636,7 @@
             if (darkPrefs[k]) darkBtn.classList.add("active");
             darkBtn.title = "Toggle dark preview";
             darkBtn.setAttribute("aria-label", "Toggle dark preview");
-            darkBtn.textContent = "◑";
+            darkBtn.innerHTML = "&#9681;";
             darkBtn.addEventListener("click", function(ev) {
               ev.preventDefault();
               ev.stopPropagation();
@@ -651,7 +654,7 @@
             delBtn.className = "act del";
             delBtn.title = "Delete";
             delBtn.setAttribute("aria-label", "Delete");
-            delBtn.textContent = "×";
+            delBtn.innerHTML = "&times;";
             delBtn.addEventListener("click", function(ev) {
               ev.preventDefault();
               ev.stopPropagation();
@@ -668,11 +671,11 @@
               });
             });
 
-            actions.appendChild(previewBtn);
             actions.appendChild(editBtn);
             actions.appendChild(darkBtn);
             actions.appendChild(delBtn);
 
+            row.appendChild(previewBtn);
             row.appendChild(card);
             row.appendChild(actions);
             list.appendChild(row);
