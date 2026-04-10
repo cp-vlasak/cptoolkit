@@ -87,7 +87,6 @@ function Strip-ProdBuild {
   # Remove dev-only folders/files
   Remove-IfExists (Join-Path $ProdPath "server")
   Remove-IfExists (Join-Path $ProdPath ".claude")
-  Remove-FileIfExists (Join-Path $ProdPath "scrub.js")
   Remove-FileIfExists (Join-Path $ProdPath ".claudeignore")
   Remove-FileIfExists (Join-Path $ProdPath "CLAUDE.md")
 }
