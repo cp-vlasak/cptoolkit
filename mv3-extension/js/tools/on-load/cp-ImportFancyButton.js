@@ -1931,7 +1931,7 @@
                     .then(function () {
                       log("All files queued, waiting for uploads to complete...");
                       // Step 6: Poll for Dropzone upload completion
-                      return pollDropzoneComplete();
+                      return pollDropzoneComplete(entries.length);
                     })
                     .then(function () {
                       log("All files uploaded via Dropzone");
@@ -1958,7 +1958,7 @@
                     });
                 }
 
-                function pollDropzoneComplete() {
+                function pollDropzoneComplete(expected) {
                   return new Promise(function (resolve, reject) {
                     var attempts = 0;
                     function check() {
@@ -1970,12 +1970,32 @@
                         "get-upload-status",
                       )
                         .then(function (result) {
+                          // Surface frame-side errors fast (e.g. iframe replaced
+                          // mid-flow) instead of polling silently to the 30s
+                          // timeout with a generic message.
+                          if (result && result.error) {
+                            return reject(new Error(result.error));
+                          }
+                          // Fail fast on any rejection — covers the all-rejected
+                          // case where `done` never flips true (done requires
+                          // accepted > 0).
+                          if (result && result.rejected > 0) {
+                            return reject(
+                              new Error(
+                                result.rejected +
+                                  " file(s) rejected by Dropzone — aborting before metadata submit",
+                              ),
+                            );
+                          }
                           if (result && result.done) {
-                            if (result.rejected > 0) {
-                              log(
-                                "  Warning: " +
-                                  result.rejected +
-                                  " file(s) rejected by Dropzone",
+                            if (result.accepted !== expected) {
+                              return reject(
+                                new Error(
+                                  "Dropzone accepted " +
+                                    result.accepted +
+                                    " file(s) but expected " +
+                                    expected,
+                                ),
                               );
                             }
                             log("  " + result.accepted + " file(s) accepted");
@@ -2165,14 +2185,43 @@
               });
           });
 
-          Promise.all(fetchPromises)
-            .then(function (entries) {
-              log("All SVGs fetched");
+          Promise.allSettled(fetchPromises)
+            .then(function (settled) {
+              var entries = [];
+              settled.forEach(function (outcome, idx) {
+                if (outcome.status === "fulfilled") {
+                  entries.push(outcome.value);
+                } else {
+                  var iconName = icons[idx].icon.name;
+                  var reason =
+                    (outcome.reason && outcome.reason.message) ||
+                    String(outcome.reason);
+                  log(
+                    "  ERROR fetching " + iconName + ": " + reason,
+                    true,
+                  );
+                  errors.push(iconName);
+                }
+              });
+              if (entries.length === 0) {
+                throw new Error("All SVG fetches failed — nothing to upload");
+              }
+              log(
+                entries.length +
+                  " of " +
+                  total +
+                  " SVGs fetched" +
+                  (errors.length > 0
+                    ? " (" + errors.length + " failed)"
+                    : ""),
+              );
               progressText.textContent =
-                "Uploading " + total + " files to Document Center...";
+                "Uploading " +
+                entries.length +
+                " files to Document Center...";
               progressBar.style.width = "20%";
 
-              // Phase 2: Upload ALL files in a single iframe session
+              // Phase 2: Upload remaining files in a single iframe session
               return uploadAllDocumentsViaIframe(entries, folderID, log);
             })
             .then(function (results) {
