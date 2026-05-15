@@ -68,10 +68,10 @@
   },
   "enforce-advanced-styles-text-limits": {
     "name": "Enforce advanced styles text limits",
-    "description": "Enforce the 1000 character limit on widget skins and the 255 character limit on widget option sets.",
+    "description": "Caps Theme Manager and Graphic Button advanced-styles textareas at their verified server-side limits (skin 4000, other Theme Manager popovers 1000, Fancy Button 1200) so the CMS doesn't silently drop oversized saves.",
     "enabled-by-default": true,
     "version-introduced": "1.3.5",
-    "help-text": "Enforces the 1000 character limit on widget skin advanced styles (MiscAdvStyles) and the 255 character limit on widget option sets."
+    "help-text": "The CivicPlus CMS silently drops CSS textarea saves that exceed undocumented server-side limits — no error, no truncation, the value just doesn't persist. This tool sets maxlength on each textarea so the input stops at the cap. Limits enforced: Theme Manager skin advanced styles (4000), other Theme Manager popovers including container, nav, and feature column (1000), Graphic Button builder Fancy Button MiscStyles (1200)."
   },
   "module-icons": {
     "name": "Favorite Module Icons",

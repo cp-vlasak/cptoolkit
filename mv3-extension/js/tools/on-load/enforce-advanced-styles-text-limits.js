@@ -5,75 +5,66 @@
       console.error("[CP Toolkit] Error loading settings for " + thisTool + ":", chrome.runtime.lastError);
       return;
     }
-    var currentPage = window.location.pathname.toLowerCase();
-    var isThemeManager = currentPage.startsWith("/designcenter/themes/");
-    var isWidgetManager = currentPage.startsWith("/designcenter/widgets/");
+    if (settings[thisTool] === false) return;
+
+    var pathname = window.location.pathname.toLowerCase();
+    var isThemeManager = pathname.startsWith("/designcenter/themes/");
+    var isGraphicLinks = pathname === "/admin/graphiclinks.aspx";
+    if (!isThemeManager && !isGraphicLinks) return;
+
     detect_if_cp_site(function() {
-      if (settings[thisTool] !== false && (isThemeManager || isWidgetManager)) {
-        console.log("[CP Toolkit] Loaded " + thisTool);
-        
-        // Wait for document.body to be available
-        function initWhenReady() {
-          if (!document.body) {
-            setTimeout(initWhenReady, 50);
-            return;
-          }
-          
-          try {
-            if (isThemeManager) {
-              // Watch for popover textareas and add maxlength when they appear
-              var applyThemeMaxlength = function() {
-                $(".cpPopOver textarea").each(function() {
-                  if (!$(this).attr("maxlength")) {
-                    $(this).attr("maxlength", 1000);
-                    // console.log("[CP Toolkit](" + thisTool + ") Applied maxlength to theme textarea");
-                  }
-                });
-              };
-              
-              // Apply immediately to any existing textareas
-              applyThemeMaxlength();
-              
-              // Watch for new popovers being added to the DOM
-              var observer = new MutationObserver(function(mutations) {
-                applyThemeMaxlength();
-              });
-              
-              observer.observe(document.body, {
-                childList: true,
-                subtree: true
-              });
-              
-            } else if (isWidgetManager) {
-              // Watch for widget options modal and add maxlength when it appears
-              var applyWidgetMaxlength = function() {
-                var miscAdvStyles = $("#MiscAdvStyles");
-                if (miscAdvStyles.length && !miscAdvStyles.attr("maxlength")) {
-                  miscAdvStyles.attr("maxlength", 1000);
-                  // console.log("[CP Toolkit](" + thisTool + ") Applied maxlength to MiscAdvStyles");
-                }
-              };
-              
-              // Apply immediately to any existing elements
-              applyWidgetMaxlength();
-              
-              // Watch for modal being added to the DOM
-              var observer = new MutationObserver(function(mutations) {
-                applyWidgetMaxlength();
-              });
-              
-              observer.observe(document.body, {
-                childList: true,
-                subtree: true
-              });
-            }
-          } catch (err) {
-            console.warn("[CP Toolkit](" + thisTool + ") Error:", err);
-          }
-        }
-        
-        initWhenReady();
+      console.log("[CP Toolkit] Loaded " + thisTool);
+
+      // Idempotent setter: writes only when current attribute differs from target.
+      // Required because the CMS pre-sets maxlength="1000" on skin textareas (wrong cap)
+      // and because reused nodes across popovers need to be reclassified on rerun.
+      function setMaxlengthIfNeeded($el, target) {
+        var current = parseInt($el.attr("maxlength"), 10);
+        if (current !== target) $el.attr("maxlength", target);
       }
+
+      // Class-based classification verified via live DOM 2026-05-14:
+      //   widgetSkin     → skin advanced styles (4000)
+      //   containerStyle → container & featureColumn (1000)
+      //   menu           → main nav (1000)
+      //   (unrecognized) → conservative 1000
+      function applyTheme() {
+        $(".cpPopOver textarea.css-editor-textarea").each(function() {
+          var target = $(this).hasClass('widgetSkin') ? 4000 : 1000;
+          setMaxlengthIfNeeded($(this), target);
+        });
+      }
+
+      function applyGraphicLinks() {
+        $('textarea[id^="fancyButton"][id$="MiscStyles"]').each(function() {
+          setMaxlengthIfNeeded($(this), 1200);
+        });
+      }
+
+      function initWhenReady() {
+        if (!document.body) { setTimeout(initWhenReady, 50); return; }
+        try {
+          var apply = isThemeManager ? applyTheme : applyGraphicLinks;
+          apply();
+          // Coalesce mutation bursts to one apply per animation frame. mini-ide
+          // rewrites backdrop.innerHTML on every keystroke; without rAF batching
+          // the body-level subtree observer would re-run the jQuery selector on
+          // every input event.
+          var rafId = null;
+          var observer = new MutationObserver(function() {
+            if (rafId !== null) return;
+            rafId = requestAnimationFrame(function() {
+              rafId = null;
+              apply();
+            });
+          });
+          observer.observe(document.body, { childList: true, subtree: true });
+        } catch (err) {
+          console.warn("[CP Toolkit](" + thisTool + ") Error:", err);
+        }
+      }
+
+      initWhenReady();
     });
   });
 })();
