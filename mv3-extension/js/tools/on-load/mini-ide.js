@@ -4340,8 +4340,6 @@
 
         const skinId = getSkinId();
         const fancyButtonId = getFancyButtonId();
-        const maxLength = parseInt(textarea.getAttribute('maxlength')) || 1000;
-        // console.log(TOOLKIT_NAME + ' Skin ID: ' + skinId + ', Fancy Button ID: ' + fancyButtonId + ', Max Length: ' + maxLength); // Phase 3: Reduced logging
 
         // Initial text replacement for both skin and fancy button numbers
         let initialText = textarea.value;
@@ -4440,7 +4438,7 @@
                 <span class="status-icon"></span>
                 <span class="status-text">Valid CSS</span>
             </div>
-            <div class="css-char-counter"><span class="current">0</span>/<span class="max">${maxLength}</span></div>
+            <div class="css-char-counter"><span class="current">0</span>/<span class="max">${parseInt(textarea.getAttribute('maxlength'), 10) || 1000}</span></div>
             <button class="css-theme-toggle" title="Toggle theme (Light → Dark → No-styles)" aria-label="Toggle editor theme" type="button">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="5"/>
@@ -4573,15 +4571,40 @@
         const currentChars = charCounter.querySelector('.current');
 
         function updateCharCounter(length) {
+            // Read live so per-context updates (e.g. skin 1000 → 4000) take effect after init.
+            const liveMaxLength = parseInt(textarea.getAttribute('maxlength'), 10) || 1000;
+            // Count save-form length: mini-ide normalizes .fancyButtonN → .fancyButton1 for the
+            // editor display but the server stores the denormalized form. The counter must reflect
+            // what actually saves; otherwise users hit the silent server cap before the counter says so.
+            // applyForSave is the canonical save transform (mirrors both the portable-CSS tokenizer
+            // path and the flat-regex fallback used by the Insert handlers), so it handles pasted raw
+            // .fancyButtonN selectors too — including on button 1, where pasted .fancyButtonN gets
+            // rewritten to .fancyButton1 (shorter than display) and would otherwise be over-counted.
+            if (fancyButtonId) {
+                length = applyForSave(textarea.value, 'fancyButton' + fancyButtonId).length;
+            }
+            const maxDisplay = charCounter.querySelector('.max');
+            if (maxDisplay && parseInt(maxDisplay.textContent, 10) !== liveMaxLength) {
+                maxDisplay.textContent = liveMaxLength;
+            }
             currentChars.textContent = length;
             charCounter.classList.remove('warning', 'error');
 
-            if (length >= maxLength) {
+            if (length >= liveMaxLength) {
                 charCounter.classList.add('error');
-            } else if (length >= maxLength * 0.9) {
+            } else if (length >= liveMaxLength * 0.9) {
                 charCounter.classList.add('warning');
             }
         }
+
+        // React to per-context maxlength updates that land after the editor is wrapped
+        // (e.g. enforce-advanced-styles-text-limits upgrades skin from 1000 → 4000).
+        const maxlengthObserver = new MutationObserver(function() {
+            updateCharCounter(textarea.value.length);
+        });
+        maxlengthObserver.observe(textarea, { attributes: true, attributeFilter: ['maxlength'] });
+        // Initial sync: if maxlength was already updated before this observer attached, refresh now.
+        updateCharCounter(textarea.value.length);
 
         // Skin replacement: instant on normal typing/paste, debounced only on backspace/delete
         let replaceSkinsOnNextSync = false;
@@ -4642,8 +4665,24 @@
         function syncEditor(options = {}) {
             let code = textarea.value;
 
-            if (code.length > maxLength) {
-                code = code.substring(0, maxLength);
+            // Read live so per-context updates (e.g. skin 1000 → 4000) take effect after init.
+            const liveMaxLength = parseInt(textarea.getAttribute('maxlength'), 10) || 1000;
+            // Truncate against save-form length: .fancyButton1 expands to .fancyButton{id} on save,
+            // so display-form truncation alone would still let the server silently drop overflow.
+            // applyForSave mirrors the actual save transform (covers pasted raw .fancyButtonN too,
+            // including on button 1 where they get rewritten back to .fancyButton1).
+            function serverLengthOf(text) {
+                return fancyButtonId
+                    ? applyForSave(text, 'fancyButton' + fancyButtonId).length
+                    : text.length;
+            }
+            let serverLen = serverLengthOf(code);
+            if (serverLen > liveMaxLength) {
+                // Bulk-truncate by overflow, then fine-tune if the cut crossed a .fancyButton1 boundary.
+                code = code.substring(0, Math.max(0, code.length - (serverLen - liveMaxLength)));
+                while (code.length > 0 && serverLengthOf(code) > liveMaxLength) {
+                    code = code.substring(0, code.length - 1);
+                }
                 textarea.value = code;
             }
 
@@ -4731,6 +4770,7 @@
                 // Textarea removed from DOM, stop checking
                 clearInterval(valueCheckInterval);
                 clearTimeout(validationTimer);
+                maxlengthObserver.disconnect();
                 return;
             }
             if (textarea.value !== lastKnownValue) {
@@ -5243,28 +5283,6 @@
         // console.log(TOOLKIT_NAME + ' Tab change listeners set up'); // Phase 3: Reduced logging
     }
 
-    // ==================== TEXT LIMIT ENFORCEMENT ====================
-    function enforceTextLimits() {
-        const isThemeManager = pageMatches(['/designcenter/themes/']);
-        const isWidgetManager = pageMatches(['/designcenter/widgets/']);
-
-        if (!isThemeManager && !isWidgetManager) return;
-
-        // console.log(TOOLKIT_NAME + ' Enforcing text limits...'); // Phase 3: Reduced logging
-
-        // CSP FIX: Use external script files instead of inline code
-        // These files run in MAIN world to access CivicPlus page globals
-        const helperFile = isThemeManager 
-            ? 'css-editor-theme-manager-helper.js'
-            : 'css-editor-widget-manager-helper.js';
-        
-        const script = document.createElement('script');
-        script.src = chrome.runtime.getURL(`js/tools/on-load/helpers/${helperFile}`);
-        (document.head || document.documentElement).appendChild(script);
-        
-        // console.log(TOOLKIT_NAME + ` Loaded external helper: ${helperFile}`); // Phase 3: Reduced logging
-    }
-
     // ==================== FIND AND ENHANCE ALL TEXTAREAS ====================
     function findAndEnhanceTextareas() {
         // Look for CSS-related textareas in multiple CMS modules:
@@ -5456,7 +5474,6 @@
         }
         // console.log(TOOLKIT_NAME + ' CivicPlus site detected! Initializing CSS editor enhancement...'); // Phase 3: Reduced logging
         injectStyles();
-        enforceTextLimits();
         startObserving();
         
         // Phase 2: Initialize theme system
