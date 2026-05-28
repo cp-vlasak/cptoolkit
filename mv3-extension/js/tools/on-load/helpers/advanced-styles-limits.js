@@ -18,7 +18,8 @@
       if (!textarea) return null;
 
       var id = textarea.id || '';
-      // Graphic Button builder — Fancy Button MiscStyles (uncapped by CMS).
+      // Graphic Button builder — Fancy Button MiscStyles. The field has no
+      // native maxlength attribute, but the server caps stored CSS at 1200.
       if (/^fancyButton.*MiscStyles$/.test(id)) return 1200;
 
       // Theme Manager popovers — discriminate by class, not id. Skin and
