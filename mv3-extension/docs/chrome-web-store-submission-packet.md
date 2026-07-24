@@ -1,16 +1,20 @@
 # Chrome Web Store Submission Packet
 
-Last updated: 2026-07-16
+Last updated: 2026-07-24
 
 Purpose: keep the upload/review notes for the MV3 Web Store readiness submission in the repo.
 
 ## Package
 
 - Extension name: `CivicPlus Internal Toolkit`
-- Submission version: `1.1.5`
+- Submission version: `1.1.6`
 - Source folder: `mv3-extension`
-- Production build folder: `mv3-extension-prod`
-- Upload artifact: `dist/civicplus-internal-toolkit-1.1.5.zip`
+- Local unpacked test folder: the same `mv3-extension` source folder
+- Production build folder: none; the Store package is assembled directly from the tested source tree
+- Upload artifact: `mv3-extension/dist/civicplus-internal-toolkit-1.1.6.zip`
+- Verified size: 2,121,095 bytes
+- Verified runtime file count: 184
+- SHA-256: `4064E36F8235B42CA7AE4C4A14C1934C2ED93749F5FFAB2C28364A3BA824C399`
 - Privacy policy URL: `https://cp-vlasak.github.io/cptoolkit/privacy.html`
 - Submission type: existing Chrome Web Store item update if the old listing can be recovered; otherwise new item submission using the same package.
 
@@ -59,13 +63,15 @@ If the dashboard asks for data categories, review carefully with the final priva
 
 ## Upload Checklist
 
-1. Confirm local QA on `mv3-extension-dev` or `mv3-extension-prod`.
+1. Confirm local QA by loading the source-of-truth `mv3-extension` folder unpacked.
 2. Run release checks and guardrails.
-3. Build `mv3-extension-prod`.
-4. Create `dist/civicplus-internal-toolkit-1.1.5.zip` with `manifest.json` at the ZIP root.
+3. Create `mv3-extension/dist/civicplus-internal-toolkit-1.1.6.zip` directly from the tested source tree, including only `manifest.json`, `css/`, `data/`, `html/`, `images/`, `js/`, and `socials/`.
+4. Verify `manifest.json` is at the ZIP root, the packaged version is `1.1.6`, and every packaged file matches the source tree.
 5. Upload the ZIP in Chrome Developer Dashboard.
 6. Review Package, Store Listing, Privacy Practices, and Distribution tabs.
 7. Submit for review.
+
+The artifact above was assembled and byte-compared against the source tree on 2026-07-24. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
 
 ## Manual QA Still Worth Doing Before Clicking Submit
 

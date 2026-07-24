@@ -69,6 +69,8 @@
     if (Array.isArray(spec.files)) Object.freeze(spec.files);
     if (Array.isArray(spec.lanes)) Object.freeze(spec.lanes);
     if (Array.isArray(spec.dependsOn)) Object.freeze(spec.dependsOn);
+    if (Array.isArray(spec.exactPaths)) Object.freeze(spec.exactPaths);
+    if (Array.isArray(spec.pathPrefixes)) Object.freeze(spec.pathPrefixes);
     if (Array.isArray(spec.notes)) Object.freeze(spec.notes);
     return Object.freeze(spec);
   }
@@ -137,6 +139,11 @@
       kind: 'tool',
       files: ['js/tools/on-load/theme-manager-enhancer.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: [
+        '/designcenter/themes/',
+        '/designcenter/widgets/',
+        '/designcenter/animations/'
+      ],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -148,6 +155,10 @@
       kind: 'tool',
       files: ['js/tools/on-load/theme-manager-skin-organizer.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: [
+        '/designcenter/themes/index',
+        '/admin/designcenter/themes/index'
+      ],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.OPTIONAL,
@@ -158,6 +169,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/widget-skin-default-override.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/designcenter/themes'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -179,6 +191,11 @@
       kind: 'tool',
       files: ['js/tools/on-load/cp-MultipleCategoryUpload.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: [
+        '/admin/infoii.aspx',
+        '/admin/graphiclinks.aspx',
+        '/admin/quicklinks.aspx'
+      ],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -189,6 +206,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/cp-MultipleQuickLinks.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/quicklinks.aspx'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -199,6 +217,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/cp-InfoAdvancedImportExport.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/infoii.aspx'],
       frameTarget: FRAME_TARGETS.TOP_WITH_SERVICE_WORKER_FRAME_BRIDGE,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.NONE,
@@ -210,6 +229,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/widget-skin-advanced-style-helper.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/designcenter/themes/', '/designcenter/widgets/'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -221,6 +241,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/graphic-link-advanced-style-helper.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/graphiclinks.aspx'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -232,6 +253,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/option-set-importer.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/designcenter/widgets'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.NONE,
@@ -302,6 +324,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/graphic-link-autofill.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/admin/graphiclinks.aspx'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -312,6 +335,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/quick-link-autofill.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/admin/quicklinks.aspx'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -332,6 +356,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/xml-change-alerts.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/admin/designcenter/layouts/modify'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -342,6 +367,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/download-xml-css.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/designcenter/layouts'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.NONE,
@@ -352,6 +378,10 @@
       kind: 'tool',
       files: ['js/tools/on-load/layout-manager-sorter.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: [
+        '/admin/designcenter/layouts',
+        '/designcenter/layouts/'
+      ],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.OPTIONAL,
@@ -362,6 +392,7 @@
       kind: 'dependency',
       files: ['js/shared/fancy-button-library.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/graphiclinks.aspx'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.NONE,
@@ -373,6 +404,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/cp-ImportFancyButton.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/graphiclinks.aspx'],
       dependsOn: ['fancy-button-library'],
       frameTarget: FRAME_TARGETS.TOP_WITH_SERVICE_WORKER_FRAME_BRIDGE,
       world: WORLDS.ISOLATED,
@@ -396,6 +428,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/fix-copied-skin-references.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: ['/designcenter/themes/'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.NONE,
@@ -418,6 +451,7 @@
       kind: 'tool',
       files: ['js/tools/on-load/cp-MultipleInfoAdvancedItems.js'],
       lanes: [LANES.ADMIN],
+      exactPaths: ['/admin/infoii.aspx'],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.REQUIRED,
@@ -428,6 +462,10 @@
       kind: 'tool',
       files: ['js/tools/on-load/redesign-manager-skin-sorter.js'],
       lanes: [LANES.ADMIN],
+      pathPrefixes: [
+        '/designcenter/redesignmanager/index',
+        '/admin/designcenter/redesignmanager/index'
+      ],
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.NONE,
@@ -445,20 +483,38 @@
     return files;
   }
 
-  function getEntriesForLane(lane) {
+  function getPathname(url) {
+    try {
+      return new URL(url).pathname.toLowerCase();
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function entryMatchesUrl(entry, url) {
+    if (!entry.exactPaths && !entry.pathPrefixes) return true;
+    var pathname = getPathname(url);
+    if (!pathname) return true;
+    if (entry.exactPaths && entry.exactPaths.indexOf(pathname) !== -1) return true;
+    return !!(entry.pathPrefixes && entry.pathPrefixes.some(function(prefix) {
+      return pathname.indexOf(prefix) === 0;
+    }));
+  }
+
+  function getEntriesForLane(lane, url) {
     return ON_LOAD_INJECTION_ORDER.filter(function(entry) {
-      return entry.lanes.indexOf(lane) !== -1;
+      return entry.lanes.indexOf(lane) !== -1 && entryMatchesUrl(entry, url);
     });
   }
 
   function getFilesForLane(lane, options) {
     var includeJquery = !!(options && options.includeJquery);
     var files = includeJquery ? ['js/external/jquery-3.3.1.min.js'] : [];
-    return files.concat(flattenFiles(getEntriesForLane(lane)));
+    return files.concat(flattenFiles(getEntriesForLane(lane, options && options.url)));
   }
 
   root.CPToolkitInjectionRegistry = Object.freeze({
-    version: '2026-07-14',
+    version: '2026-07-22',
     lanes: LANES,
     frameTargets: FRAME_TARGETS,
     worlds: WORLDS,
@@ -468,6 +524,7 @@
     activationBootstrap: ACTIVATION_BOOTSTRAP,
     currentStaticBootstrap: CURRENT_STATIC_BOOTSTRAP,
     onLoad: ON_LOAD_INJECTION_ORDER,
+    entryMatchesUrl: entryMatchesUrl,
     getEntriesForLane: getEntriesForLane,
     getFilesForLane: getFilesForLane,
     onDemandSource: 'data/on-demand-tools.json',

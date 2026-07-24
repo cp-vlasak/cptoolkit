@@ -34,6 +34,26 @@
     <hr>
     <div id="message"></div>
     <div id="version-list">
+      <div class="version v1.1.6">
+        <h4>Version 1.1.6</h4>
+        <h5>Toolkit Activation Reliability</h5>
+
+        <div class="tool-category">Bug Fixes</div>
+        <ul class="tool-list">
+          <li><strong>Page Activation:</strong> Improved detection of CivicPlus admin and editor pages whose CMS shell finishes rendering after the toolkit's first check.</li>
+          <li><strong>Automatic Recovery:</strong> Added acknowledged, bounded retries when a cold extension worker or navigation race temporarily interrupts activation.</li>
+          <li><strong>Refresh Handling:</strong> Chrome error-page frames encountered during refresh are now treated as temporary navigation states instead of permanent toolkit failures.</li>
+          <li><strong>Vanity Domains:</strong> After approving an exact vanity-domain permission, the already-open page can activate without clicking the extension icon a second time.</li>
+        </ul>
+
+        <div class="tool-category">Performance &amp; Safety</div>
+        <ul class="tool-list">
+          <li><strong>Route-Scoped Loading:</strong> Page-specific tools are no longer downloaded and parsed on unrelated admin routes, reducing the Dashboard automatic bundle by approximately 43%.</li>
+          <li><strong>Transactional Injection:</strong> Slow or failed injections can recover safely without duplicate toolkit initialization.</li>
+          <li><strong>Permission Binding:</strong> Vanity-domain activation is bound to the exact origin and tab that initiated the user-approved permission request.</li>
+        </ul>
+      </div>
+
       <div class="version v1.2">
         <h4>Version 1.2.0</h4>
         <h5>New Tools, Snippets Page &amp; Options Enhancements</h5>

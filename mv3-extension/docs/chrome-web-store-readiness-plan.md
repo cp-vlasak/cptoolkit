@@ -1,8 +1,12 @@
 # Chrome Web Store Readiness Plan
 
-Last updated: 2026-07-16
+Last updated: 2026-07-24
 
 Purpose: preserve the Chrome Web Store / MV3 action plan in the repo so future work does not depend on Codex task history.
+
+Activation reliability follow-up: `docs/toolkit-activation-reliability-plan.md`
+
+Security threat model: `docs/extension-threat-model.md`
 
 ## Source Context
 
@@ -37,6 +41,36 @@ The extension is MV3. As of the 2026-07-14 activation checkpoint, the manifest n
 - `js/popup.js` no longer runs the legacy Mystique `HEAD` probe on arbitrary active tabs, which prevents SPA/fallback 200 false positives such as `reddit.com`.
 - Vanity domains use a user-gesture flow: the popup runs the tiny DOM detector under `activeTab` on the current HTTPS tab, then offers `Trust this domain` only if CMS/admin/Live Edit markers pass.
 - The legacy `js/detect_cp_site.js` file and its Mystique `HEAD` probe were removed on 2026-07-16. The only supported compatibility path is now `js/content/toolkit-activation-bootstrap.js`, which exposes `detect_if_cp_site()` after centralized detector activation.
+
+Post-publication reliability report from 2026-07-20:
+
+- On `https://32.civic.place/Admin/DesignCenter`, the published toolkit failed to appear on two consecutive attempts and appeared on the third.
+- The page appeared to load in under the detector's seven-second window, so timeout alone is not considered the confirmed cause.
+- The next update must instrument and harden detector completion, service-worker acknowledgement, and transactional bundle injection. The focused decision record and acceptance matrix are in `docs/toolkit-activation-reliability-plan.md`.
+
+API-assisted site verification evaluated on 2026-07-20:
+
+- CivicPlus Web Central documentation states that every Web Central site has built-in API tooling at `/api`. The live route `https://32.civic.place/api/help/index` exposes Swagger UI titled `CivicPlus API Documentation` and loads its specification from `/swagger/v1/swagger.json`.
+- A public, credential-free API/Swagger signature can be added as another positive detector signal, particularly when eligible Admin/DesignCenter DOM markers are late. It must validate CivicPlus-specific response content or specification fields, not accept HTTP `200` or generic Swagger markup alone.
+- The API probe will supplement rather than replace DOM/path evidence. REST availability can vary by Web Central generation/configuration, network failure must not disable otherwise valid DOM detection, and a non-CivicPlus host can imitate a public route.
+- The API probe cannot replace the manifest's enumerated required host list. Chrome must already have host access (required host permission, temporary `activeTab`, or a granted exact optional origin) before the extension can reliably probe or inject on an arbitrary vanity host. Restoring broad all-sites access solely to run the probe would reverse the Store-readiness permission decision.
+- On unknown vanity hosts, API verification may be added to the user-invoked `activeTab` trust flow. After positive API plus CMS/admin evidence and user approval, continue registering the exact HTTPS origin as currently designed.
+- Do not embed or request CivicPlus customer API keys, Token IDs, usernames, or passwords for site detection. Detection must use only public, non-mutating metadata routes.
+
+Groveport vanity-host reconnaissance on 2026-07-20:
+
+- Tested signed-in route: `https://www.groveport.org/Admin/Dashboard#!/recentactivity`.
+- Tested anonymous routes in a separate browser context: `https://www.groveport.org/`, `https://www.groveport.org/api`, `https://www.groveport.org/api/help/index`, and `https://www.groveport.org/Admin/Dashboard`.
+- `/api` redirects to `/api/help/index` without authentication. The resulting Swagger UI identifies itself as `CivicPlus API Documentation`, references `/swagger/v1/swagger.json`, reports API version `v1`, and lists CivicPlus-specific families including `Authentication`, `CMS`, `DocumentCenter`, `FormCenter`, `NewsFlash`, `Pages`, and `SubscriberManagement`.
+- Because the API catalog is public, it is a strong Web Central product/origin signal but is not proof that a power user is signed in.
+- Anonymous navigation to `/Admin/Dashboard` redirects away from the vanity origin to `cpauthentication.civicplus.com/Identity/Account/Login`. A signed-in power-user session remains on the vanity origin and renders the admin dashboard.
+- Stable signed-in admin-shell evidence observed on Groveport includes `body.cp-AdminWrap`, `.cp-Toolbar`, `.cp-ModuleList`, the `Dashboard`/`Modules` navigation, the `Powered by CivicPlus` revision footer, and admin-only form/input shapes. Detector code must check presence and structure only; it must not read or record user IDs, request-verification tokens, or other field values.
+- Stable public Web Central evidence includes `[data-cprole]`, CivicPlus referral links, `/Assets/Mystique/...`, `/Areas/...`, and `/Assets/Scripts/APIClient.js`. These are useful corroborating product markers but do not prove authentication.
+- The authenticated dashboard loads protected read routes such as `/Admin/Dashboard/RecentActivity/Get`, but the extension should not call them merely for detection because that retrieves real admin data unnecessarily. Likewise, the REST `Authentication` API uses the separate API key/Partition model and is not a clean proxy for the browser CMS session.
+- Recommended vanity activation contract: under user-invoked `activeTab`, require both (1) a CivicPlus product signature, preferably public API/Swagger plus static asset corroboration, and (2) authenticated page context, such as a same-origin `/Admin`/`DesignCenter` document with the admin shell or a public-path document with strong Live Edit controls. Then request and persist only the exact HTTPS origin.
+- This contract can remove the need to manually enumerate customer vanity domains, but it cannot remove Chrome's required-host list for zero-click activation on known platform domains. The first activation on an unknown vanity origin remains user-invoked unless broad all-sites permission is restored.
+- A signed-in Groveport public homepage was also tested with Live Edit explicitly `OFF`. It still rendered the power-user shell: Dashboard and Modules navigation, `.cp-Toolbar`, `.cp-AdminWrap`, `.cp-ModuleList`, and same-origin `/Admin/Dashboard` links. The anonymous homepage did not render this shell.
+- Add a distinct `authenticated-shell` detector result for vanity trust eligibility. This result should confirm a signed-in CivicPlus power user even when Live Edit is off, but it must not by itself inject the full admin toolkit on an ordinary public page. Full-toolkit activation remains limited to Admin/DesignCenter or actual Live Edit contexts.
 
 The Phase 0 audit adds one important correction to the simple two-lane model: the toolkit has three activation contexts, not two:
 
@@ -128,6 +162,17 @@ Pre-upload audit checkpoint as of 2026-07-16:
 - `js/background/context-menus.js` now derives its menu registry version from `manifest.json` instead of a stale hard-coded version.
 - `js/tools/on-demand/*` was removed from `web_accessible_resources` because context-menu tools run through `chrome.scripting.executeScript()` and do not need to be page-loadable resources.
 - Store packaging prep started on 2026-07-16 with manifest version bumped to `1.1.5` for the MV3/Web Store readiness submission.
+
+Release 1.1.6 checkpoint as of 2026-07-24:
+
+- The intermittent activation fix is implemented with fresh deadline evaluation, bounded fallback detection, acknowledged message retries, and transactional injection state.
+- Route-scoped loading reduces the `/Admin/Dashboard` automatic bundle from 32 files / 1,121,240 bytes to 13 files / 640,064 bytes, a 42.9% reduction.
+- Exact vanity-domain permission grants now bootstrap the initiating tab without requiring a second extension-icon click.
+- The vanity trust event is bound to a short-lived, exact-origin and exact-tab user-intent record.
+- Chrome refresh error documents are treated as recoverable unavailable targets.
+- The manifest release version is `1.1.6`; required permissions and host patterns are unchanged from 1.1.5.
+- Automated activation tests, changed-file syntax checks, manifest parsing, `git diff --check`, and all six security guardrails pass.
+- The source-of-truth `mv3-extension` directory is also the required unpacked-test directory. Store packaging must select files directly from this tree; no separately edited production copy is allowed.
 
 Prior review conclusion: earlier PR work did not add new permissions, host permissions, or web-accessible-resource exposure, and it did not add remote code execution patterns. The activation checkpoint directly addresses the biggest residual Chrome Store/internal-vetting issue by removing required `*://*/*` from content-script matching, host permissions, and WAR exposure. Remaining review work is focused on manual CMS QA, resource-list pruning, and permission/behavior justification.
 

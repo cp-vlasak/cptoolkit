@@ -13,7 +13,12 @@
   var activationResult = null;
   var compatibleDetected = false;
   var compatibilityCallbacks = [];
-  var sentKeys = Object.create(null);
+  var activationStates = Object.create(null);
+  var ACTIVATION_RETRY_DELAYS_MS = [0, 100, 300, 1000, 2000];
+  var documentActivationId = [
+    Date.now().toString(36),
+    Math.random().toString(36).slice(2, 8)
+  ].join('-');
   var isTopFrame = false;
 
   try {
@@ -102,15 +107,105 @@
     flushCompatibilityCallbacks();
   }
 
-  function sendActivation(key, payload) {
-    if (sentKeys[key]) return;
-    sentKeys[key] = true;
-    try {
-      var response = chrome.runtime.sendMessage(payload);
-      if (response && typeof response.catch === 'function') {
-        response.catch(function() {});
+  function classifyActivationResponse(response) {
+    if (!response) return { status: 'retry', reason: 'missing-response' };
+    if (response.error) return { status: 'retry', reason: response.error };
+
+    var result = response.result || {};
+    if (result.injected || result.duplicate || result.activated || result.registered) {
+      return { status: 'complete', result: result };
+    }
+    if (result.pending) {
+      return { status: 'retry', reason: 'injection-pending', result: result };
+    }
+
+    var skipped = result.skipped || '';
+    if (skipped === 'target-unavailable') {
+      return { status: 'retry', reason: skipped, result: result };
+    }
+    if (skipped) {
+      return { status: 'terminal', reason: skipped, result: result };
+    }
+
+    return { status: 'retry', reason: 'unrecognized-response', result: result };
+  }
+
+  function exposeActivationState(key, state) {
+    root.__cpToolkitActivationDeliveryState = root.__cpToolkitActivationDeliveryState || {};
+    root.__cpToolkitActivationDeliveryState[key] = {
+      status: state.status,
+      attempt: state.attempt,
+      reason: state.reason || '',
+      activationId: documentActivationId
+    };
+  }
+
+  function sendActivationAttempt(key) {
+    var state = activationStates[key];
+    if (!state || state.status === 'complete' || state.status === 'terminal') return;
+
+    var delay = ACTIVATION_RETRY_DELAYS_MS[state.attempt];
+    if (typeof delay !== 'number') {
+      state.status = 'exhausted';
+      state.reason = state.reason || 'retry-limit-reached';
+      exposeActivationState(key, state);
+      console.warn('[CP Toolkit] Activation delivery exhausted:', key, state.reason);
+      return;
+    }
+
+    state.status = state.attempt === 0 ? 'sending' : 'retrying';
+    exposeActivationState(key, state);
+
+    state.timer = root.setTimeout(function() {
+      state.timer = null;
+      state.attempt += 1;
+
+      var response;
+      try {
+        response = chrome.runtime.sendMessage(state.payload);
+      } catch (err) {
+        state.reason = err && err.message ? err.message : String(err || 'send-failed');
+        exposeActivationState(key, state);
+        sendActivationAttempt(key);
+        return;
       }
-    } catch (err) {}
+
+      Promise.resolve(response).then(function(value) {
+        var outcome = classifyActivationResponse(value);
+        state.status = outcome.status;
+        state.reason = outcome.reason || '';
+        state.result = outcome.result || null;
+        exposeActivationState(key, state);
+
+        if (outcome.status === 'retry') {
+          sendActivationAttempt(key);
+        }
+      }).catch(function(error) {
+        state.status = 'retry';
+        state.reason = error && error.message ? error.message : String(error || 'send-failed');
+        exposeActivationState(key, state);
+        sendActivationAttempt(key);
+      });
+    }, delay);
+  }
+
+  function sendActivation(key, payload) {
+    var existing = activationStates[key];
+    if (existing && existing.status !== 'exhausted') return;
+
+    var nextPayload = Object.assign({}, payload, {
+      activationId: documentActivationId
+    });
+    activationStates[key] = {
+      status: 'pending',
+      attempt: 0,
+      reason: '',
+      payload: nextPayload,
+      timer: null,
+      result: null
+    };
+    exposeActivationState(key, activationStates[key]);
+    sendActivationAttempt(key);
   }
 
   function sendLaneActivations(result, reason) {

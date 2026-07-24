@@ -12,6 +12,7 @@
   });
 
   var DEFAULT_TIMEOUT_MS = 7000;
+  var FALLBACK_CHECK_INTERVAL_MS = 500;
   var TOOLKIT_PREFIX = 'cp-toolkit';
   var KNOWN_PLATFORM_SUFFIXES = [
     '.civicplus.com',
@@ -332,17 +333,22 @@
       }
 
       var observer = null;
-      var rafPending = false;
+      var checkTimer = null;
+      var fallbackTimer = null;
+      var timeoutTimer = null;
       var settled = false;
       var lastResult = null;
 
       function cleanup() {
         settled = true;
         if (observer) observer.disconnect();
+        if (checkTimer !== null) root.clearTimeout(checkTimer);
+        if (fallbackTimer !== null) root.clearTimeout(fallbackTimer);
+        if (timeoutTimer !== null) root.clearTimeout(timeoutTimer);
       }
 
       function check() {
-        rafPending = false;
+        checkTimer = null;
         if (settled) return;
 
         lastResult = evaluatePage({
@@ -358,10 +364,20 @@
       }
 
       function scheduleCheck() {
-        if (rafPending || settled) return;
-        rafPending = true;
-        var raf = root.requestAnimationFrame || function(callback) { return setTimeout(callback, 16); };
-        raf(check);
+        if (checkTimer !== null || settled) return;
+        // Activation is lifecycle work, not rendering work. requestAnimationFrame
+        // can be throttled or paused and previously allowed the timeout to win
+        // with a stale document_start result.
+        checkTimer = root.setTimeout(check, 0);
+      }
+
+      function scheduleFallbackCheck() {
+        if (settled) return;
+        fallbackTimer = root.setTimeout(function() {
+          fallbackTimer = null;
+          check();
+          scheduleFallbackCheck();
+        }, FALLBACK_CHECK_INTERVAL_MS);
       }
 
       check();
@@ -377,19 +393,27 @@
         });
       }
 
-      setTimeout(function() {
+      scheduleFallbackCheck();
+
+      timeoutTimer = root.setTimeout(function() {
         if (settled) return;
-        cleanup();
-        resolve(lastResult || evaluatePage({
+        // Always evaluate the current DOM at the deadline. Returning lastResult
+        // here used to return the initial document_start snapshot even when the
+        // admin shell had appeared before the timeout.
+        var finalResult = evaluatePage({
           document: doc,
           location: options.location || root.location
-        }));
+        });
+        lastResult = finalResult;
+        if (typeof options.onUpdate === 'function') options.onUpdate(finalResult);
+        cleanup();
+        resolve(finalResult);
       }, timeoutMs);
     });
   }
 
   root.CPToolkitDomDetector = Object.freeze({
-    version: '2026-07-15',
+    version: '2026-07-22',
     lanes: LANES,
     defaultTimeoutMs: DEFAULT_TIMEOUT_MS,
     knownPlatformHosts: KNOWN_PLATFORM_HOSTS.slice(),

@@ -1,5 +1,5 @@
 // CivicPlus Toolkit - Service Worker (MV3)
-// Version 1.1.0
+// Version 1.1.6
 
 console.log('[CP Toolkit] Service worker initializing...');
 

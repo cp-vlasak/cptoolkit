@@ -142,6 +142,33 @@ async function ensureTrustedOriginRegistration(originPattern) {
   return registerResult;
 }
 
+async function prepareTrustedOriginActivation(tab, originPattern, lanes) {
+  const response = await chrome.runtime.sendMessage({
+    action: 'cp-toolkit-prepare-trusted-origin',
+    originPattern: originPattern,
+    tabId: tab.id,
+    lanes: lanes
+  });
+  const result = response && response.result;
+  if (!result || result.prepared !== true) {
+    throw new Error(result && result.skipped ? result.skipped : 'Could not prepare domain trust');
+  }
+  return result;
+}
+
+async function clearPendingTrustedOrigin(tab, originPattern) {
+  try {
+    await chrome.runtime.sendMessage({
+      action: 'cp-toolkit-clear-pending-trusted-origin',
+      originPattern: originPattern,
+      tabId: tab.id
+    });
+  } catch (error) {
+    // The record is short-lived and will expire automatically if the popup is
+    // destroyed before cleanup can complete.
+  }
+}
+
 function setTrustedInactiveStatus(statusDiv, tab) {
   setSiteStatus(
     statusDiv,
@@ -198,10 +225,15 @@ async function renderVanityTrustPrompt(statusDiv, tab, detection, originPattern)
   button.addEventListener('click', async () => {
     button.disabled = true;
     button.textContent = 'Requesting access...';
+    let pendingTrustPrepared = false;
 
     try {
+      await prepareTrustedOriginActivation(tab, originPattern, lanes);
+      pendingTrustPrepared = true;
+
       const granted = await chrome.permissions.request({ origins: [originPattern] });
       if (!granted) {
+        await clearPendingTrustedOrigin(tab, originPattern);
         setSiteStatus(statusDiv, 'inactive', 'fas fa-times-circle', 'Domain was not trusted');
         return;
       }
@@ -209,6 +241,9 @@ async function renderVanityTrustPrompt(statusDiv, tab, detection, originPattern)
       button.textContent = 'Activating...';
       await registerAndActivateTrustedOrigin(statusDiv, tab, originPattern, lanes);
     } catch (error) {
+      if (pendingTrustPrepared) {
+        await clearPendingTrustedOrigin(tab, originPattern);
+      }
       setSiteStatus(statusDiv, 'inactive', 'fas fa-exclamation-circle', error.message || 'Could not trust this domain');
     }
   });
