@@ -68,9 +68,21 @@ Overall result: no new high-severity security issue, no manifest permission expa
 - Error-page classification changes only a known Chrome refresh/navigation rejection from hard failure to recoverable `target-unavailable`.
 - No API probe, credential handling, remote script loading, `eval()`, or `Function()` constructor was added.
 
+### 2026-07-26 -- Copied skin advanced-style regeneration
+
+- **Fixed the skipped-regeneration condition:** the native skin-copy finalizer previously regenerated component CSS only when it changed an old `.skinNNN` reference. Copied advanced CSS without that pattern could remain stale until a user manually edited the textarea.
+- **Regenerate every copied component:** after the CMS assigns the copied skin its real ID, every component is marked modified and regenerated against that ID, even when no selector replacement is necessary.
+- **Persist the generated result:** the finalizer performs one bounded follow-up save through the original CMS save function after regeneration.
+- **Preserve advanced-style text:** the component-copy touch API no longer appends a trailing space to `MiscellaneousStyles`; dirty state and CSS generation are invoked directly.
+- **Retain delayed-copy recovery:** copied skins not yet assigned a real ID at the first two-second check remain queued for the existing five-second retry.
+- **Harden exact-skin targeting:** the finalizer resolves the captured temporary skin object first, then a captured array position plus name, and only then a unique newly assigned ID/name candidate. It never selects an existing skin merely because the name matches.
+- **Bind copy operations before saving:** each source-skin copy record is attached to its corresponding temporary skin before the CMS save. Ambiguous copy/new-skin counts fail closed without modifying an unbound skin.
+- **Added regression coverage:** `tests/copied-skin-advanced-styles.test.js` verifies exact text preservation, regeneration of every copied component, restoration of the previous active skin ID, automatic follow-up persistence, and that an existing same-name decoy skin remains untouched.
+
 ## Validation Record
 
 - Automated Node tests: passed `node tests/activation-reliability.test.js` on 2026-07-24, including overlapping activation and pending-trust binding.
+- Copied skin advanced-style tests: passed `node tests/copied-skin-advanced-styles.test.js` on 2026-07-26.
 - JavaScript syntax checks: passed for every changed JavaScript file on 2026-07-24.
 - Manifest JSON validation: passed on 2026-07-24.
 - `git diff --check`: passed on 2026-07-24 (line-ending warnings only).
@@ -78,8 +90,8 @@ Overall result: no new high-severity security issue, no manifest permission expa
 - Local unpacked Chrome testing on `32.civic.place`: pending.
 - Chrome Web Store candidate package: created and byte-compared against the source tree on 2026-07-24.
 - Candidate artifact: `dist/civicplus-internal-toolkit-1.1.6.zip`
-- Candidate contents: 184 runtime files, 2,121,095 bytes, with `manifest.json` at the ZIP root and packaged manifest version `1.1.6`.
-- Candidate SHA-256: `4064E36F8235B42CA7AE4C4A14C1934C2ED93749F5FFAB2C28364A3BA824C399`
+- Candidate contents: 184 runtime files, 2,122,318 bytes, with `manifest.json` at the ZIP root and packaged manifest version `1.1.6`.
+- Candidate SHA-256: `FA952EA39B2E941CDA542ED681D47FAF0C7E1C70D534D936A56B08AC61158F7E`
 
 ## Remaining 1.1.6 Work
 

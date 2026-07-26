@@ -202,7 +202,7 @@
     "description": "Automatically fixes CSS skin ID references when copying widget skins.",
     "enabled-by-default": true,
     "version-introduced": "1.0.2",
-    "help-text": "When you copy a widget skin, the advanced styles (MiscellaneousStyles) may still reference the source skin's ID (e.g., .widget.skin101) instead of the new skin's ID. This tool automatically detects copies and updates the CSS references after the new skin gets its ID from the server. A notification will appear when references are fixed, prompting you to save again."
+    "help-text": "When you copy a widget skin, this tool updates any advanced-style references to the source skin ID, regenerates every copied component against the new skin ID, and saves the regenerated styles automatically. The advanced-style text is preserved without adding whitespace or requiring a manual edit."
   },
   "adfs": {
     "name": "ADFS / SSO Bypass",

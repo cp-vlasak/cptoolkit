@@ -12,9 +12,9 @@ Purpose: keep the upload/review notes for the MV3 Web Store readiness submission
 - Local unpacked test folder: the same `mv3-extension` source folder
 - Production build folder: none; the Store package is assembled directly from the tested source tree
 - Upload artifact: `mv3-extension/dist/civicplus-internal-toolkit-1.1.6.zip`
-- Verified size: 2,121,095 bytes
+- Verified size: 2,122,318 bytes
 - Verified runtime file count: 184
-- SHA-256: `4064E36F8235B42CA7AE4C4A14C1934C2ED93749F5FFAB2C28364A3BA824C399`
+- SHA-256: `FA952EA39B2E941CDA542ED681D47FAF0C7E1C70D534D936A56B08AC61158F7E`
 - Privacy policy URL: `https://cp-vlasak.github.io/cptoolkit/privacy.html`
 - Submission type: existing Chrome Web Store item update if the old listing can be recovered; otherwise new item submission using the same package.
 

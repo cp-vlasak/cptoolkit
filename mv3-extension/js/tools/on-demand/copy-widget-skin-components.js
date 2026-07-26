@@ -202,8 +202,9 @@
       }
 
       try {
-        // Touch the data (add a space to trigger change detection)
-        comp.MiscellaneousStyles = (comp.MiscellaneousStyles || '') + ' ';
+        // Mark and regenerate directly. Do not alter the advanced-style text:
+        // appending a space was an old dirty-state workaround that made copied
+        // data differ from its source.
         comp.RecordStatus = DesignCenter.recordStatus.Modified;
         skin.RecordStatus = DesignCenter.recordStatus.Modified;
 
@@ -267,8 +268,7 @@
         }
 
         try {
-          // Touch the data
-          comp.MiscellaneousStyles = (comp.MiscellaneousStyles || '') + ' ';
+          // Mark and regenerate directly without changing MiscellaneousStyles.
           comp.RecordStatus = DesignCenter.recordStatus.Modified;
 
           // Regenerate CSS

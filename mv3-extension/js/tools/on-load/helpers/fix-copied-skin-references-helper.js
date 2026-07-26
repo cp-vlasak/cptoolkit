@@ -121,6 +121,8 @@
 
   // Track pending copies: { sourceSkinId, timestamp }
   var pendingCopies = [];
+  var originalSaveTheme = null;
+  var finalizationSaveScheduled = false;
 
   /**
    * Intercept clicks on "Copy Skin" button
@@ -167,29 +169,101 @@
   var newSkinsBeforeSave = [];
 
   /**
+   * Persist regenerated component CSS without routing the follow-up save back
+   * through copy detection. The CMS copy save assigns the real skin ID first;
+   * this second save persists the CSS regenerated for that real ID.
+   */
+  function scheduleFinalizationSave() {
+    if (!originalSaveTheme || finalizationSaveScheduled) return;
+    finalizationSaveScheduled = true;
+
+    setTimeout(function() {
+      try {
+        originalSaveTheme.call(window);
+        console.log('[CP Toolkit](' + thisTool + ') Saved regenerated copied-skin styles');
+      } catch (err) {
+        console.error('[CP Toolkit](' + thisTool + ') Could not save regenerated copied-skin styles', err);
+      } finally {
+        finalizationSaveScheduled = false;
+      }
+    }, 0);
+  }
+
+  /**
+   * Resolve only the skin created by this save. Never select an existing skin
+   * merely because it has the same name.
+   */
+  function resolveCopiedSkin(savedSkin) {
+    var skins = DesignCenter.themeJSON.WidgetSkins;
+    var existingIds = savedSkin.existingIds || {};
+
+    function isNewlyAssigned(candidate) {
+      return !!(
+        candidate &&
+        candidate.WidgetSkinID > 0 &&
+        !existingIds[String(candidate.WidgetSkinID)]
+      );
+    }
+
+    // Most CMS saves update the same object with its assigned ID.
+    if (
+      savedSkin.reference &&
+      skins.indexOf(savedSkin.reference) !== -1 &&
+      isNewlyAssigned(savedSkin.reference)
+    ) {
+      return savedSkin.reference;
+    }
+
+    // If the CMS replaced the array/object, require both the captured position
+    // and name, plus an ID that did not exist before this save.
+    var indexedCandidate = skins[savedSkin.index];
+    if (
+      isNewlyAssigned(indexedCandidate) &&
+      indexedCandidate.Name === savedSkin.name
+    ) {
+      return indexedCandidate;
+    }
+
+    // Position can shift after a response merge. A name fallback is allowed
+    // only when exactly one newly assigned candidate exists.
+    var candidates = skins.filter(function(candidate) {
+      return isNewlyAssigned(candidate) && candidate.Name === savedSkin.name;
+    });
+    return candidates.length === 1 ? candidates[0] : null;
+  }
+
+  /**
    * Check for new skin IDs after save
    */
   function checkForNewSkinIds() {
     if (pendingCopies.length === 0) return;
     if (!window.DesignCenter || !DesignCenter.themeJSON) return;
 
+    var unresolvedSkins = [];
+    var finalizedCopies = 0;
+
     // Find skins that now have real IDs by matching their names
     newSkinsBeforeSave.forEach(function(savedSkin) {
-      // Find the skin by name (more reliable than index which can shift)
-      var skin = DesignCenter.themeJSON.WidgetSkins.find(function(s) {
-        return s.Name === savedSkin.name && s.WidgetSkinID > 0;
-      });
+      var skin = resolveCopiedSkin(savedSkin);
 
       if (!skin) {
-        console.log('[CP Toolkit](' + thisTool + ') Could not find skin "' + savedSkin.name + '" with valid ID');
+        console.log(
+          '[CP Toolkit](' + thisTool + ') Could not uniquely resolve newly copied skin "' +
+          savedSkin.name + '"; no skin was modified'
+        );
+        unresolvedSkins.push(savedSkin);
         return;
       }
 
       console.log('[CP Toolkit](' + thisTool + ') Skin "' + skin.Name + '" now has ID:', skin.WidgetSkinID);
 
-      // Find the most recent pending copy that matches
-      var pendingCopy = pendingCopies.shift();
+      // Use the copy operation bound to this temporary skin before the save.
+      // Do not consume a generic queue head during a delayed retry.
+      var pendingCopy = savedSkin.pendingCopy;
       if (pendingCopy) {
+        var pendingIndex = pendingCopies.indexOf(pendingCopy);
+        if (pendingIndex !== -1) pendingCopies.splice(pendingIndex, 1);
+
         console.log('[CP Toolkit](' + thisTool + ') Fixing references from skin', pendingCopy.sourceSkinId,
           'to skin', skin.WidgetSkinID);
 
@@ -198,26 +272,35 @@
 
         if (changes > 0) {
           console.log('[CP Toolkit](' + thisTool + ') Updated', changes, 'CSS reference(s)');
-
-          // Mark skin as modified so it gets saved
-          skin.RecordStatus = DesignCenter.recordStatus.Modified;
-          skin.Components.forEach(function(comp) {
-            comp.RecordStatus = DesignCenter.recordStatus.Modified;
-          });
-
-          // Regenerate CSS
-          regenerateSkinCSS(skin.WidgetSkinID);
-
-          // Notify user
-          showNotification(skin.Name, pendingCopy.sourceSkinId, skin.WidgetSkinID, changes);
         } else {
-          console.log('[CP Toolkit](' + thisTool + ') No CSS references needed updating');
+          console.log('[CP Toolkit](' + thisTool + ') No skin ID references needed updating');
         }
+
+        // A copied component's advanced-style text can be correct while its
+        // generated CSS remains stale. Always mark and regenerate every copied
+        // component; do not mutate MiscellaneousStyles merely to trigger this.
+        skin.RecordStatus = DesignCenter.recordStatus.Modified;
+        skin.Components.forEach(function(comp) {
+          comp.RecordStatus = DesignCenter.recordStatus.Modified;
+        });
+
+        var regenerated = regenerateSkinCSS(skin.WidgetSkinID);
+        if (regenerated) finalizedCopies++;
+
+        showNotification(
+          skin.Name,
+          pendingCopy.sourceSkinId,
+          skin.WidgetSkinID,
+          changes,
+          skin.Components.length,
+          regenerated
+        );
       }
     });
 
-    // Clear the list
-    newSkinsBeforeSave = [];
+    // Retain unresolved names for the scheduled five-second retry.
+    newSkinsBeforeSave = unresolvedSkins;
+    if (finalizedCopies > 0) scheduleFinalizationSave();
   }
 
   /**
@@ -227,19 +310,39 @@
     if (!window.saveTheme || window.__FixCopiedSkin_saveWrapped) return;
 
     var originalSave = window.saveTheme;
+    originalSaveTheme = originalSave;
     window.__FixCopiedSkin_saveWrapped = true;
 
     window.saveTheme = function() {
       // Find skins with temporary ID before save
       if (window.DesignCenter && DesignCenter.themeJSON && DesignCenter.themeJSON.WidgetSkins) {
-        newSkinsBeforeSave = DesignCenter.themeJSON.WidgetSkins
+        var existingIds = {};
+        DesignCenter.themeJSON.WidgetSkins.forEach(function(skin) {
+          if (skin.WidgetSkinID > 0) existingIds[String(skin.WidgetSkinID)] = true;
+        });
+
+        var temporarySkins = DesignCenter.themeJSON.WidgetSkins
           .filter(function(s) {
             return s.WidgetSkinID === -1 || s.RecordStatus === DesignCenter.recordStatus.New;
-          })
-          .map(function(s) {
+          });
+        var copyBindings = temporarySkins.length === pendingCopies.length
+          ? pendingCopies.slice()
+          : [];
+        if (temporarySkins.length !== pendingCopies.length) {
+          console.warn(
+            '[CP Toolkit](' + thisTool + ') Copy/new-skin counts are ambiguous; ' +
+            'advanced-style finalization will not target an unbound skin'
+          );
+        }
+
+        newSkinsBeforeSave = temporarySkins
+          .map(function(s, index) {
             return {
               name: s.Name,
-              index: DesignCenter.themeJSON.WidgetSkins.indexOf(s)
+              index: DesignCenter.themeJSON.WidgetSkins.indexOf(s),
+              reference: s,
+              existingIds: existingIds,
+              pendingCopy: copyBindings[index] || null
             };
           });
 
@@ -266,7 +369,7 @@
   // USER NOTIFICATION
   // ============================================================================
 
-  function showNotification(skinName, fromId, toId, changesCount) {
+  function showNotification(skinName, fromId, toId, changesCount, componentCount, regenerated) {
     // Create a notification element
     var notification = document.createElement('div');
     notification.style.cssText =
@@ -289,11 +392,12 @@
       '  &#10003; Skin Copy Fixed' +
       '</div>' +
       '<div style="font-size: 13px;">' +
-      '  Updated ' + changesCount + ' CSS reference(s) in "' + skinName + '"<br>' +
+      '  Regenerated ' + componentCount + ' advanced-style component(s) in "' + skinName + '"<br>' +
       '  <span style="opacity: 0.9;">(skin' + fromId + ' &rarr; skin' + toId + ')</span>' +
       '</div>' +
       '<div style="font-size: 12px; margin-top: 8px; opacity: 0.9;">' +
-      '  Click <strong>Save</strong> to keep these changes.' +
+      (changesCount > 0 ? '  Updated ' + changesCount + ' copied skin-ID reference(s).<br>' : '') +
+      (regenerated ? '  The regenerated styles will be saved automatically.' : '  Some component styles could not be regenerated; review the console.') +
       '</div>';
 
     // Add animation keyframes
