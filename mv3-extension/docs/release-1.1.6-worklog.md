@@ -1,8 +1,8 @@
 # CP Toolkit 1.1.6 Release Worklog
 
-Last updated: 2026-07-24
+Last updated: 2026-07-27
 
-Status: release candidate packaged and ready for local unpacked acceptance testing; do not upload until the manual release gate passes.
+Status: release owner reports local unpacked acceptance testing passed; candidate is approved for merge and Chrome Web Store upload.
 
 ## Release Source of Truth
 
@@ -81,32 +81,36 @@ Overall result: no new high-severity security issue, no manifest permission expa
 
 ## Validation Record
 
-- Automated Node tests: passed `node tests/activation-reliability.test.js` on 2026-07-24, including overlapping activation and pending-trust binding.
+- Automated Node tests: passed `node tests/activation-reliability.test.js` on 2026-07-26, including overlapping activation and pending-trust binding.
 - Copied skin advanced-style tests: passed `node tests/copied-skin-advanced-styles.test.js` on 2026-07-26.
-- JavaScript syntax checks: passed for every changed JavaScript file on 2026-07-24.
-- Manifest JSON validation: passed on 2026-07-24.
-- `git diff --check`: passed on 2026-07-24 (line-ending warnings only).
-- Security guardrails: all six passed on 2026-07-24.
-- Local unpacked Chrome testing on `32.civic.place`: pending.
-- Chrome Web Store candidate package: created and byte-compared against the source tree on 2026-07-24.
+- JavaScript syntax checks: passed for every changed JavaScript file on 2026-07-26.
+- Manifest and tool-registry JSON validation: passed on 2026-07-26.
+- `git diff --check`: passed on 2026-07-26 (line-ending warnings only).
+- Security guardrails: all six passed on 2026-07-26.
+- Local unpacked acceptance testing: release owner reported the revised candidate tests successfully on 2026-07-27 and approved merge.
+- Chrome Web Store candidate package: rebuilt and byte-compared against the source tree on 2026-07-26.
 - Candidate artifact: `dist/civicplus-internal-toolkit-1.1.6.zip`
 - Candidate contents: 184 runtime files, 2,122,318 bytes, with `manifest.json` at the ZIP root and packaged manifest version `1.1.6`.
 - Candidate SHA-256: `FA952EA39B2E941CDA542ED681D47FAF0C7E1C70D534D936A56B08AC61158F7E`
 
+## Rollback Checkpoints
+
+- `pre-v1.1.6-2026-07-27` points to commit `ff653f6`, the exact pre-merge `main` state with manifest version `1.1.5`.
+- `v1.1.4` remains available at commit `8adb3fec046d3081bd2495e533136c646f52d5ca`.
+- Emergency rollback should create a new patch release from the selected checkpoint rather than moving or deleting published tags.
+
 ## Remaining 1.1.6 Work
 
-1. Reload this exact directory as the unpacked extension and run the `32.civic.place` reliability matrix.
-2. On an approved non-client vanity test origin, revoke its existing optional host permission, grant it once through the toolkit prompt, and verify the current page activates without reopening the extension or refreshing.
-3. Capture `__cpToolkitActivationDeliveryState` and the extension console if any attempt fails.
-4. Add a tool-independent operational-ready signal if local testing reveals a gap between successful injection and visible initialization.
-5. If acceptance testing changes any runtime file, rebuild the candidate ZIP and repeat the byte-for-byte comparison before upload.
+1. Merge the accepted release branch into `main`.
+2. Upload `dist/civicplus-internal-toolkit-1.1.6.zip` in the Chrome Web Store dashboard.
+3. If any runtime file changes after acceptance, rebuild the candidate ZIP and repeat the byte-for-byte comparison before upload.
 
 ## Release Gate
 
-Do not upload 1.1.6 until:
+Release owner acceptance was recorded on 2026-07-27. The following gates are satisfied:
 
 - the local unpacked folder above passes the automated checks;
 - `32.civic.place` passes the documented navigation/refresh matrix;
 - the fix ledger and user-facing changelog match the shipped files;
 - the Store ZIP contents are compared against this directory; and
-- the user explicitly approves publishing.
+- the user explicitly approves merging and publishing.

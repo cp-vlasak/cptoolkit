@@ -1,6 +1,6 @@
 # Chrome Web Store Submission Packet
 
-Last updated: 2026-07-24
+Last updated: 2026-07-27
 
 Purpose: keep the upload/review notes for the MV3 Web Store readiness submission in the repo.
 
@@ -71,7 +71,9 @@ If the dashboard asks for data categories, review carefully with the final priva
 6. Review Package, Store Listing, Privacy Practices, and Distribution tabs.
 7. Submit for review.
 
-The artifact above was assembled and byte-compared against the source tree on 2026-07-24. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
+The artifact above was assembled and byte-compared against the source tree on 2026-07-26. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
+
+Release owner reported local unpacked acceptance testing passed on 2026-07-27 and approved the candidate for merge and upload. Rollback checkpoint `pre-v1.1.6-2026-07-27` preserves the exact pre-merge v1.1.5 `main` state.
 
 ## Manual QA Still Worth Doing Before Clicking Submit
 
