@@ -97,7 +97,8 @@ Overall result: no new high-severity security issue, no manifest permission expa
 
 - `pre-v1.1.6-2026-07-27` points to commit `ff653f6`, the exact pre-merge `main` state with manifest version `1.1.5`.
 - `v1.1.4` remains available at commit `8adb3fec046d3081bd2495e533136c646f52d5ca`.
-- Emergency rollback should create a new patch release from the selected checkpoint rather than moving or deleting published tags.
+- After 1.1.6 is published, the Chrome Web Store dashboard's built-in rollback can immediately republish the previously published package under a new version number without another review: `https://developer.chrome.com/docs/webstore/rollback`.
+- The built-in Store rollback is the preferred emergency response for reverting 1.1.6 to the immediately previous published package. Use the Git checkpoints when reconstructing, auditing, or creating a later patch from older source; do not move or delete published tags.
 
 ## Remaining 1.1.6 Work
 
