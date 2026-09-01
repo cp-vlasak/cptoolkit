@@ -161,6 +161,35 @@
       });
     }
 
+    // ==================== FANCY BUTTON ID BADGE ====================
+    // Shows the real .fancyButtonN class next to the Fancy Button Builder
+    // modal title so the number is visible without opening DevTools.
+    function injectFancyButtonIdBadge() {
+      const modal = document.querySelector('.modalContainer.fancyButtonBuilder');
+      if (!modal) return;
+
+      const titleEl = modal.querySelector('h3.modalTitle');
+      const titleLeft = titleEl && titleEl.parentElement;
+      if (!titleLeft) return;
+
+      let badge = titleLeft.querySelector('.cpFancyButtonIdBadge');
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'cpFancyButtonIdBadge';
+        badge.style.cssText = 'display:inline-block;margin-left:8px;padding:2px 10px;' +
+          'background:#0b5b8a;color:#fff;border-radius:999px;font-size:12px;' +
+          'font-weight:600;font-family:Arial,sans-serif;vertical-align:middle;' +
+          'letter-spacing:.02em;';
+        titleLeft.appendChild(badge);
+      }
+
+      const buttonId = getFancyButtonId();
+      badge.textContent = buttonId ? ('#' + buttonId) : 'unsaved';
+      badge.title = buttonId
+        ? ('This is Fancy Button #' + buttonId + '. Use .fancyButton' + buttonId + ' when referencing this button in a selector.')
+        : 'This button has not been saved yet, so it does not have a permanent ID.';
+    }
+
     // ==================== PROCESS TEXTAREAS ====================
     function processTextareas() {
       const buttonId = getFancyButtonId();
@@ -331,6 +360,7 @@
           processTextareas();
           fixHtmlEncodedStyles();
           fixRenderedFancyButtonStyles();
+          injectFancyButtonIdBadge();
         }, 300);
       });
       
@@ -350,6 +380,7 @@
         // console.log(TOOLKIT_NAME + ' DOMContentLoaded fired, initializing...');
         processTextareas();
         fixRenderedFancyButtonStyles();
+        injectFancyButtonIdBadge();
         setupInsertButtonHandler();
         startObserving();
       });
@@ -357,6 +388,7 @@
       // console.log(TOOLKIT_NAME + ' Document already loaded, initializing immediately...');
       processTextareas();
       fixRenderedFancyButtonStyles();
+      injectFancyButtonIdBadge();
       setupInsertButtonHandler();
       startObserving();
     }
@@ -369,7 +401,8 @@
       normalizeToFancyButton1: normalizeToFancyButton1,
       denormalizeFromFancyButton1: denormalizeFromFancyButton1,
       fixRenderedFancyButtonStyles: fixRenderedFancyButtonStyles,
-      processTextareas: processTextareas
+      processTextareas: processTextareas,
+      injectFancyButtonIdBadge: injectFancyButtonIdBadge
     };
     
     // console.log(TOOLKIT_NAME + ' ✓ Ready');
