@@ -260,26 +260,33 @@
     }
 
     function injectSelectorCopyButtons() {
+      console.log('[CP DEBUG v3] injectSelectorCopyButtons() called');
       const tabSelect = document.querySelector('select#selectedTab');
+      console.log('[CP DEBUG v3] tabSelect found:', !!tabSelect);
       if (!tabSelect) return;
 
       const options = tabSelect.querySelectorAll('option');
+      console.log('[CP DEBUG v3] option count:', options.length);
       options.forEach(opt => {
         const containerId = (opt.value || '').replace(/^#/, '');
         if (!containerId) return;
 
         const base = getSelectorBaseForContainerId(containerId);
+        console.log('[CP DEBUG v3] option', opt.value, '-> base:', JSON.stringify(base));
         if (base === null) return;
 
         const container = document.getElementById(containerId);
+        console.log('[CP DEBUG v3]   container found:', !!container);
         if (!container) return;
 
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
+        console.log('[CP DEBUG v3]   header count inside container:', headers.length);
         headers.forEach((header, idx) => {
           if (header.dataset.cpCopyBtnAdded === 'true') return;
           const isHover = idx === 1;
           header.appendChild(makeSelectorCopyButton(base, isHover));
           header.dataset.cpCopyBtnAdded = 'true';
+          console.log('[CP DEBUG v3]   appended button, isHover:', isHover, 'header text:', header.textContent);
         });
       });
     }
