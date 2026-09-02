@@ -365,7 +365,14 @@
           //    descendant, so every click on it also toggles the row.
           // Inserting as a preceding sibling (never a descendant, and
           // never touching header's own next-sibling) avoids both.
+          // The header <p> is block-level by default, so a preceding
+          // sibling still renders on its own line above it. Switching the
+          // header itself to inline-block (its own layout only — no effect
+          // on its children or the click listener bound to it) lets it flow
+          // onto the same line as the button. Verified live: the collapse
+          // toggle still works when the header text itself is clicked.
           if (header.parentElement.querySelector('.cpSelectorCopyBtn')) return;
+          header.style.setProperty('display', 'inline-block', 'important');
           header.insertAdjacentElement('beforebegin', makeSelectorCopyButton(isHover));
         });
       });
