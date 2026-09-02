@@ -282,11 +282,20 @@
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
         console.log('[CP DEBUG v3]   header count inside container:', headers.length);
         headers.forEach((header, idx) => {
-          if (header.dataset.cpCopyBtnAdded === 'true') return;
           const isHover = idx === 1;
-          header.appendChild(makeSelectorCopyButton(base, isHover));
-          header.dataset.cpCopyBtnAdded = 'true';
-          console.log('[CP DEBUG v3]   appended button, isHover:', isHover, 'header text:', header.textContent);
+          // Never append inside the header <p> itself — some of these labels
+          // are re-synced via `element.textContent = ...` by the native CMS,
+          // which silently wipes any child node (including a button we added)
+          // with no error. Insert as the next sibling instead, and force both
+          // to inline-block so they still render on one visual line.
+          const next = header.nextElementSibling;
+          if (next && next.classList && next.classList.contains('cpSelectorCopyBtn')) {
+            return; // already inserted for this header
+          }
+          header.style.display = 'inline-block';
+          const btn = makeSelectorCopyButton(base, isHover);
+          header.insertAdjacentElement('afterend', btn);
+          console.log('[CP DEBUG v3]   inserted button after header, isHover:', isHover, 'header text:', header.textContent);
         });
       });
     }
