@@ -455,6 +455,7 @@
           fixHtmlEncodedStyles();
           fixRenderedFancyButtonStyles();
           injectFancyButtonIdBadge();
+          injectSelectorCopyButtons();
         }, 300);
       });
       
@@ -475,6 +476,7 @@
         processTextareas();
         fixRenderedFancyButtonStyles();
         injectFancyButtonIdBadge();
+        injectSelectorCopyButtons();
         setupInsertButtonHandler();
         startObserving();
       });
@@ -483,10 +485,11 @@
       processTextareas();
       fixRenderedFancyButtonStyles();
       injectFancyButtonIdBadge();
+      injectSelectorCopyButtons();
       setupInsertButtonHandler();
       startObserving();
     }
-    
+
     // Expose API
     window.CPToolkit = window.CPToolkit || {};
     window.CPToolkit.graphicLinkHelper = {
@@ -496,7 +499,8 @@
       denormalizeFromFancyButton1: denormalizeFromFancyButton1,
       fixRenderedFancyButtonStyles: fixRenderedFancyButtonStyles,
       processTextareas: processTextareas,
-      injectFancyButtonIdBadge: injectFancyButtonIdBadge
+      injectFancyButtonIdBadge: injectFancyButtonIdBadge,
+      injectSelectorCopyButtons: injectSelectorCopyButtons
     };
     
     // console.log(TOOLKIT_NAME + ' ✓ Ready');
