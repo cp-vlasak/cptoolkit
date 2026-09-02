@@ -268,10 +268,10 @@
       btn.className = 'cpSelectorCopyBtn';
       btn.title = 'Copy a starting selector for a new rule at this level';
       btn.textContent = '⧉';
-      btn.style.cssText = 'display:inline-block;width:15px;height:15px;line-height:13px;' +
-        'margin-left:6px;padding:0;text-align:center;font-size:10px;cursor:pointer;' +
-        'border:1px solid #b9c6cf;border-radius:3px;background:#f5f8fa;color:#0b5b8a;' +
-        'vertical-align:text-bottom;box-shadow:none;';
+      btn.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;' +
+        'width:20px;height:20px;margin-left:10px;padding:0;font-size:12px;line-height:1;' +
+        'cursor:pointer;border:1px solid #b9c6cf;border-radius:4px;background:#f5f8fa;' +
+        'color:#0b5b8a;vertical-align:middle;box-shadow:none;';
       btn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
