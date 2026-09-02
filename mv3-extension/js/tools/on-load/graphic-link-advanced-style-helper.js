@@ -263,15 +263,37 @@
     }
 
     function makeSelectorCopyButton(isHover) {
+      const wrapper = document.createElement('span');
+      wrapper.className = 'cpSelectorCopyBtn';
+      wrapper.style.cssText = 'position:relative !important;display:inline-flex !important;' +
+        'vertical-align:middle !important;margin:0 0 0 10px !important;';
+
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'cpSelectorCopyBtn';
-      btn.title = 'Copy a starting selector for a new rule at this level';
       btn.textContent = '⧉';
-      btn.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;' +
-        'width:20px;height:20px;margin-left:10px;padding:0;font-size:12px;line-height:1;' +
-        'cursor:pointer;border:1px solid #b9c6cf;border-radius:4px;background:#f5f8fa;' +
-        'color:#0b5b8a;vertical-align:middle;box-shadow:none;';
+      btn.style.cssText = 'display:inline-flex !important;align-items:center !important;' +
+        'justify-content:center !important;width:20px !important;height:20px !important;' +
+        'min-width:20px !important;max-width:20px !important;min-height:20px !important;' +
+        'max-height:20px !important;margin:0 !important;padding:0 !important;' +
+        'font-size:12px !important;line-height:1 !important;cursor:pointer !important;' +
+        'border:1px solid #b9c6cf !important;border-radius:4px !important;' +
+        'background:#f5f8fa !important;color:#0b5b8a !important;box-shadow:none !important;' +
+        'box-sizing:border-box !important;appearance:none !important;' +
+        '-webkit-appearance:none !important;';
+
+      const tooltip = document.createElement('span');
+      tooltip.textContent = 'Copy a starting selector for a new rule at this level';
+      tooltip.style.cssText = 'position:absolute !important;bottom:130% !important;' +
+        'left:50% !important;transform:translateX(-50%) !important;' +
+        'background:#1f2d3a !important;color:#fff !important;padding:5px 9px !important;' +
+        'border-radius:4px !important;font-size:11px !important;line-height:1.3 !important;' +
+        'white-space:nowrap !important;display:none;z-index:10000 !important;' +
+        'pointer-events:none !important;box-shadow:0 2px 6px rgba(0,0,0,.25) !important;' +
+        'font-family:Arial,sans-serif !important;';
+
+      btn.addEventListener('mouseenter', function() { tooltip.style.display = 'block'; });
+      btn.addEventListener('mouseleave', function() { tooltip.style.display = 'none'; });
+
       btn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -279,11 +301,14 @@
         const base = getCurrentSelectorBase();
         const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
         copySelectorSnippetToClipboard(snippet);
-        const original = btn.textContent;
-        btn.textContent = '✓';
-        setTimeout(() => { btn.textContent = original; }, 1000);
+        const originalTooltipText = tooltip.textContent;
+        tooltip.textContent = 'Copied!';
+        setTimeout(() => { tooltip.textContent = originalTooltipText; }, 1200);
       });
-      return btn;
+
+      wrapper.appendChild(btn);
+      wrapper.appendChild(tooltip);
+      return wrapper;
     }
 
     function injectSelectorCopyButtons() {
