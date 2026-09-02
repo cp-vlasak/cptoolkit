@@ -266,7 +266,7 @@
       const wrapper = document.createElement('span');
       wrapper.className = 'cpSelectorCopyBtn';
       wrapper.style.cssText = 'position:relative !important;display:inline-flex !important;' +
-        'vertical-align:middle !important;margin:0 0 0 10px !important;';
+        'vertical-align:middle !important;margin:0 10px 0 0 !important;';
 
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -330,13 +330,19 @@
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
         headers.forEach((header, idx) => {
           const isHover = idx === 1;
-          // header.nextElementSibling is the .cpExpandCollapseBox that holds
-          // the textarea, and the native expand/collapse toggle depends on
-          // that direct adjacency — inserting a sibling there breaks it.
-          // Appending inside the header <p> itself leaves that relationship
-          // untouched.
-          if (header.querySelector('.cpSelectorCopyBtn')) return;
-          header.appendChild(makeSelectorCopyButton(isHover));
+          // Two constraints, both confirmed by testing:
+          // 1. header.nextElementSibling is the .cpExpandCollapseBox that
+          //    holds the textarea, and the native toggle depends on that
+          //    direct adjacency — inserting a sibling there breaks it.
+          // 2. The header's own toggle listener appears to be bound on
+          //    mousedown (not click), and/or in the capture phase, so it
+          //    fires before any handler on a descendant could stop it.
+          //    Appending inside the header <p> makes the button a
+          //    descendant, so every click on it also toggles the row.
+          // Inserting as a preceding sibling (never a descendant, and
+          // never touching header's own next-sibling) avoids both.
+          if (header.parentElement.querySelector('.cpSelectorCopyBtn')) return;
+          header.insertAdjacentElement('beforebegin', makeSelectorCopyButton(isHover));
         });
       });
     }
