@@ -190,6 +190,100 @@
         : 'This button has not been saved yet, so it does not have a permanent ID.';
     }
 
+    // ==================== SELECTOR COPY BUTTONS ====================
+    // Each Advanced Styles panel (Background outer/inner, Default Text
+    // Style, and any number of added Text Styles) is identified by the
+    // #selectedTab dropdown's option value, e.g. "#fancyButtonText2".
+    // That id is a stable, CMS-controlled anchor — unlike the on-screen
+    // selector label, which the native UI renders identically for
+    // Background (inner), Default Text Style, and every Text Style N.
+    // The real per-style class (.textStyleN) comes from cp-ImportFancyButton.js,
+    // which already relies on that same rendered markup.
+    function getSelectorBaseForContainerId(containerId) {
+      if (containerId === 'fancyButtonOuterBackground') return '';
+      if (containerId === 'fancyButtonInnerBackground') return ' .text';
+      if (containerId === 'fancyButtonText') return ' .text';
+      const styleMatch = containerId.match(/^fancyButtonText(\d+)$/);
+      if (styleMatch) return ' .textStyle' + styleMatch[1];
+      return null;
+    }
+
+    function buildSelectorCopySnippet(buttonId, base, isHover) {
+      const state = isHover ? ':is(:hover, :focus, :active)' : '';
+      let snippet = '.fancyButton1' + state + base;
+      if (buttonId && buttonId !== '1') {
+        snippet += ',\n.fancyButton' + buttonId + state + base;
+      }
+      return '}\n\n' + snippet + ' {';
+    }
+
+    function copySelectorSnippetToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopySnippet(text));
+      } else {
+        fallbackCopySnippet(text);
+      }
+    }
+
+    function fallbackCopySnippet(text) {
+      const scratch = document.createElement('textarea');
+      scratch.value = text;
+      scratch.style.position = 'fixed';
+      scratch.style.opacity = '0';
+      document.body.appendChild(scratch);
+      scratch.select();
+      try { document.execCommand('copy'); } catch (err) { /* no-op */ }
+      document.body.removeChild(scratch);
+    }
+
+    function makeSelectorCopyButton(base, isHover) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cpSelectorCopyBtn';
+      btn.title = 'Copy a starting selector for a new rule at this level';
+      btn.textContent = '⧉';
+      btn.style.cssText = 'display:inline-block;width:16px;height:16px;line-height:14px;' +
+        'margin-left:6px;padding:0;text-align:center;font-size:11px;cursor:pointer;' +
+        'border:1px solid #0b5b8a;border-radius:3px;background:#fff;color:#0b5b8a;' +
+        'vertical-align:middle;';
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const buttonId = getFancyButtonId();
+        const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
+        copySelectorSnippetToClipboard(snippet);
+        const original = btn.textContent;
+        btn.textContent = '✓';
+        setTimeout(() => { btn.textContent = original; }, 1000);
+      });
+      return btn;
+    }
+
+    function injectSelectorCopyButtons() {
+      const tabSelect = document.querySelector('select#selectedTab');
+      if (!tabSelect) return;
+
+      const options = tabSelect.querySelectorAll('option');
+      options.forEach(opt => {
+        const containerId = (opt.value || '').replace(/^#/, '');
+        if (!containerId) return;
+
+        const base = getSelectorBaseForContainerId(containerId);
+        if (base === null) return;
+
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const headers = container.querySelectorAll('p.cpExpandCollapseControl');
+        headers.forEach((header, idx) => {
+          if (header.dataset.cpCopyBtnAdded === 'true') return;
+          const isHover = idx === 1;
+          header.appendChild(makeSelectorCopyButton(base, isHover));
+          header.dataset.cpCopyBtnAdded = 'true';
+        });
+      });
+    }
+
     // ==================== PROCESS TEXTAREAS ====================
     function processTextareas() {
       const buttonId = getFancyButtonId();
