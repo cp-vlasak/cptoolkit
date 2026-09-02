@@ -161,11 +161,25 @@
       });
     }
 
+    // The CMS can leave a previous Fancy Button Builder modal's DOM behind
+    // (hidden) when it is reopened without a full page reload. Any lookup
+    // that assumes there is only one #selectedTab or one #fancyButton*Misc
+    // in the whole document can silently grab a stale, hidden instance
+    // instead of the one actually on screen. Scoping to the visible modal
+    // avoids that.
+    function getVisibleFancyButtonModal() {
+      const modals = document.querySelectorAll('.modalContainer.fancyButtonBuilder');
+      for (const m of modals) {
+        if (m.offsetParent !== null) return m;
+      }
+      return modals[0] || null;
+    }
+
     // ==================== FANCY BUTTON ID BADGE ====================
     // Shows the real .fancyButtonN class next to the Fancy Button Builder
     // modal title so the number is visible without opening DevTools.
     function injectFancyButtonIdBadge() {
-      const modal = document.querySelector('.modalContainer.fancyButtonBuilder');
+      const modal = getVisibleFancyButtonModal();
       if (!modal) return;
 
       const titleEl = modal.querySelector('h3.modalTitle');
@@ -228,7 +242,8 @@
     // click must be read from the dropdown at click time, not baked in when
     // the button was injected.
     function getCurrentSelectorBase() {
-      const tabSelect = document.querySelector('select#selectedTab');
+      const modal = getVisibleFancyButtonModal();
+      const tabSelect = modal ? modal.querySelector('select#selectedTab') : null;
       const containerId = tabSelect ? (tabSelect.value || '').replace(/^#/, '') : '';
       const base = getSelectorBaseForContainerId(containerId);
       return base === null ? '' : base;
@@ -312,7 +327,10 @@
     }
 
     function injectSelectorCopyButtons() {
-      const tabSelect = document.querySelector('select#selectedTab');
+      const modal = getVisibleFancyButtonModal();
+      if (!modal) return;
+
+      const tabSelect = modal.querySelector('select#selectedTab');
       if (!tabSelect) return;
 
       const miscContainerIds = new Set();
@@ -324,7 +342,7 @@
       });
 
       miscContainerIds.forEach(miscId => {
-        const container = document.getElementById(miscId);
+        const container = modal.querySelector('#' + miscId);
         if (!container) return;
 
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
