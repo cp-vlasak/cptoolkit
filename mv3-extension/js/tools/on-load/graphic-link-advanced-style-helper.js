@@ -208,6 +208,32 @@
       return null;
     }
 
+    // The ADV STYLES content for a level lives in a separate "Misc" panel,
+    // not the panel named by the #selectedTab option value itself (that one
+    // only holds Background & Border / Spacing & Sizing fields). Background
+    // outer/inner each get their own permanent Misc panel, but every Text
+    // Style (Default + any numbered one) shares a single dynamic panel,
+    // #fancyButtonTextStyleMisc, whose meaning depends on the dropdown's
+    // current selection — confirmed by live DOM inspection.
+    function getMiscContainerId(containerId) {
+      if (containerId === 'fancyButtonOuterBackground') return 'fancyButtonOuterBackgroundMisc';
+      if (containerId === 'fancyButtonInnerBackground') return 'fancyButtonInnerBackgroundMisc';
+      if (containerId === 'fancyButtonText' || /^fancyButtonText\d+$/.test(containerId)) {
+        return 'fancyButtonTextStyleMisc';
+      }
+      return null;
+    }
+
+    // Text Style panels share one DOM container, so the correct base for a
+    // click must be read from the dropdown at click time, not baked in when
+    // the button was injected.
+    function getCurrentSelectorBase() {
+      const tabSelect = document.querySelector('select#selectedTab');
+      const containerId = tabSelect ? (tabSelect.value || '').replace(/^#/, '') : '';
+      const base = getSelectorBaseForContainerId(containerId);
+      return base === null ? '' : base;
+    }
+
     function buildSelectorCopySnippet(buttonId, base, isHover) {
       const state = isHover ? ':is(:hover, :focus, :active)' : '';
       let snippet = '.fancyButton1' + state + base;
@@ -236,20 +262,21 @@
       document.body.removeChild(scratch);
     }
 
-    function makeSelectorCopyButton(base, isHover) {
+    function makeSelectorCopyButton(isHover) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'cpSelectorCopyBtn';
       btn.title = 'Copy a starting selector for a new rule at this level';
       btn.textContent = '⧉';
-      btn.style.cssText = 'display:inline-block;width:16px;height:16px;line-height:14px;' +
-        'margin-left:6px;padding:0;text-align:center;font-size:11px;cursor:pointer;' +
-        'border:1px solid #0b5b8a;border-radius:3px;background:#fff;color:#0b5b8a;' +
-        'vertical-align:middle;';
+      btn.style.cssText = 'display:inline-block;width:15px;height:15px;line-height:13px;' +
+        'margin-left:6px;padding:0;text-align:center;font-size:10px;cursor:pointer;' +
+        'border:1px solid #b9c6cf;border-radius:3px;background:#f5f8fa;color:#0b5b8a;' +
+        'vertical-align:text-bottom;box-shadow:none;';
       btn.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
         const buttonId = getFancyButtonId();
+        const base = getCurrentSelectorBase();
         const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
         copySelectorSnippetToClipboard(snippet);
         const original = btn.textContent;
@@ -260,42 +287,31 @@
     }
 
     function injectSelectorCopyButtons() {
-      console.log('[CP DEBUG v3] injectSelectorCopyButtons() called');
       const tabSelect = document.querySelector('select#selectedTab');
-      console.log('[CP DEBUG v3] tabSelect found:', !!tabSelect);
       if (!tabSelect) return;
 
-      const options = tabSelect.querySelectorAll('option');
-      console.log('[CP DEBUG v3] option count:', options.length);
-      options.forEach(opt => {
+      const miscContainerIds = new Set();
+      tabSelect.querySelectorAll('option').forEach(opt => {
         const containerId = (opt.value || '').replace(/^#/, '');
         if (!containerId) return;
+        const miscId = getMiscContainerId(containerId);
+        if (miscId) miscContainerIds.add(miscId);
+      });
 
-        const base = getSelectorBaseForContainerId(containerId);
-        console.log('[CP DEBUG v3] option', opt.value, '-> base:', JSON.stringify(base));
-        if (base === null) return;
-
-        const container = document.getElementById(containerId);
-        console.log('[CP DEBUG v3]   container found:', !!container);
+      miscContainerIds.forEach(miscId => {
+        const container = document.getElementById(miscId);
         if (!container) return;
 
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
-        console.log('[CP DEBUG v3]   header count inside container:', headers.length);
         headers.forEach((header, idx) => {
           const isHover = idx === 1;
-          // Never append inside the header <p> itself — some of these labels
-          // are re-synced via `element.textContent = ...` by the native CMS,
-          // which silently wipes any child node (including a button we added)
-          // with no error. Insert as the next sibling instead, and force both
-          // to inline-block so they still render on one visual line.
-          const next = header.nextElementSibling;
-          if (next && next.classList && next.classList.contains('cpSelectorCopyBtn')) {
-            return; // already inserted for this header
-          }
-          header.style.display = 'inline-block';
-          const btn = makeSelectorCopyButton(base, isHover);
-          header.insertAdjacentElement('afterend', btn);
-          console.log('[CP DEBUG v3]   inserted button after header, isHover:', isHover, 'header text:', header.textContent);
+          // header.nextElementSibling is the .cpExpandCollapseBox that holds
+          // the textarea, and the native expand/collapse toggle depends on
+          // that direct adjacency — inserting a sibling there breaks it.
+          // Appending inside the header <p> itself leaves that relationship
+          // untouched.
+          if (header.querySelector('.cpSelectorCopyBtn')) return;
+          header.appendChild(makeSelectorCopyButton(isHover));
         });
       });
     }
