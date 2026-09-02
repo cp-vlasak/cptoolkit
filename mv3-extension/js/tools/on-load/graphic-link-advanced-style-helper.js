@@ -224,23 +224,29 @@
 
     // The ADV STYLES content for a level lives in a separate "Misc" panel,
     // not the panel named by the #selectedTab option value itself (that one
-    // only holds Background & Border / Spacing & Sizing fields). Background
-    // outer/inner each get their own permanent Misc panel, but every Text
-    // Style (Default + any numbered one) shares a single dynamic panel,
-    // #fancyButtonTextStyleMisc, whose meaning depends on the dropdown's
-    // current selection — confirmed by live DOM inspection.
+    // only holds Background & Border / Spacing & Sizing fields). Confirmed
+    // by direct measurement (getBoundingClientRect + computed display) of
+    // each candidate container:
+    //   - Background outer/inner each get their own permanent Misc panel.
+    //   - Default Text Style's panel is #fancyButtonTextStyleMisc (no suffix).
+    //   - Each added Text Style N gets its OWN panel, #fancyButtonTextStyleMiscN
+    //     — NOT a shared panel. (An earlier version of this code assumed all
+    //     Text Styles shared one #fancyButtonTextStyleMisc container; that
+    //     was wrong — that id belongs only to Default Text Style, is real,
+    //     and stays in the DOM with display:none once a numbered style is
+    //     added, which is why buttons injected into it were never visible.)
     function getMiscContainerId(containerId) {
       if (containerId === 'fancyButtonOuterBackground') return 'fancyButtonOuterBackgroundMisc';
       if (containerId === 'fancyButtonInnerBackground') return 'fancyButtonInnerBackgroundMisc';
-      if (containerId === 'fancyButtonText' || /^fancyButtonText\d+$/.test(containerId)) {
-        return 'fancyButtonTextStyleMisc';
-      }
+      if (containerId === 'fancyButtonText') return 'fancyButtonTextStyleMisc';
+      const styleMatch = containerId.match(/^fancyButtonText(\d+)$/);
+      if (styleMatch) return 'fancyButtonTextStyleMisc' + styleMatch[1];
       return null;
     }
 
-    // Text Style panels share one DOM container, so the correct base for a
-    // click must be read from the dropdown at click time, not baked in when
-    // the button was injected.
+    // Each Text Style now has its own container, so the base could be baked
+    // in at injection time — but reading it fresh from the dropdown at click
+    // time is still correct and is a cheap extra safety net.
     function getCurrentSelectorBase() {
       const modal = getVisibleFancyButtonModal();
       const tabSelect = modal ? modal.querySelector('select#selectedTab') : null;
@@ -298,16 +304,16 @@
 
       const tooltip = document.createElement('span');
       tooltip.textContent = 'Copy a starting selector for a new rule at this level';
-      tooltip.style.cssText = 'position:absolute !important;bottom:130% !important;' +
+      tooltip.style.cssText = 'position:absolute !important;top:130% !important;' +
         'left:50% !important;transform:translateX(-50%) !important;' +
         'background:#1f2d3a !important;color:#fff !important;padding:5px 9px !important;' +
         'border-radius:4px !important;font-size:11px !important;line-height:1.3 !important;' +
-        'white-space:nowrap !important;display:none;z-index:10000 !important;' +
+        'white-space:nowrap !important;display:none !important;z-index:10000 !important;' +
         'pointer-events:none !important;box-shadow:0 2px 6px rgba(0,0,0,.25) !important;' +
         'font-family:Arial,sans-serif !important;';
 
-      btn.addEventListener('mouseenter', function() { tooltip.style.display = 'block'; });
-      btn.addEventListener('mouseleave', function() { tooltip.style.display = 'none'; });
+      btn.addEventListener('mouseenter', function() { tooltip.style.setProperty('display', 'block', 'important'); });
+      btn.addEventListener('mouseleave', function() { tooltip.style.setProperty('display', 'none', 'important'); });
 
       btn.addEventListener('click', function(e) {
         e.preventDefault();
