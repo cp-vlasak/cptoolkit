@@ -71,7 +71,11 @@
     var selects = popover.querySelectorAll("select");
     for (var i = 0; i < selects.length; i++) {
       var opts = selects[i].options;
-      if (opts.length && normalizeText(opts[0].text) === "Wrapper") return selects[i];
+      // Some widget types (e.g. mini calendar) label their first option
+      // "Calendar Wrapper" instead of plain "Wrapper" - match on the word
+      // rather than requiring an exact "Wrapper" string, or this select
+      // never gets found for those widget types at all.
+      if (opts.length && /wrapper/i.test(normalizeText(opts[0].text))) return selects[i];
     }
     return null;
   }
