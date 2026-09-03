@@ -472,35 +472,31 @@
     }
 
     // ==================== PROCESS TEXTAREAS ====================
+    // Removed: this used to rewrite a saved textarea's value on every load
+    // to normalize .fancyButtonN back to the placeholder .fancyButton1 for
+    // editing/preview. That destructive rewrite is exactly the anti-pattern
+    // the copy-buttons feature's regression investigation flagged — it
+    // silently collapsed a deliberate dual/portable selector (one half for
+    // preview, one half for the real saved page) into a duplicate every
+    // time the builder reopened. No longer touches persisted values at all.
     function processTextareas() {
       const buttonId = getFancyButtonId();
       if (!buttonId) return;
-      
+
       const textareas = document.querySelectorAll(
         'textarea#fancyButtonNormalMiscStyles, ' +
         'textarea#fancyButtonHoverMiscStyles, ' +
         'textarea[id^="fancyButton"][id$="MiscStyles"], ' +
         'textarea.autoUpdate'
       );
-      
+
       textareas.forEach(textarea => {
         const currentValue = textarea.value;
         if (!currentValue) return;
-        
+
         // Skip if already processed
         if (textarea.dataset.cpFancyProcessed === 'true') return;
-        
-        // Normalize to fancyButton1 for editing (preserving this button's
-        // real id, since a portable dual selector may already reference it)
-        const normalizedText = normalizeToFancyButton1(currentValue, buttonId);
-        
-        if (currentValue !== normalizedText) {
-          textarea.value = normalizedText;
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          // console.log(TOOLKIT_NAME + ' ✓ Normalized to .fancyButton1 in #' + (textarea.id || 'textarea'));
-        }
-        
+
         textarea.dataset.cpFancyProcessed = 'true';
       });
     }
