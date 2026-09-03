@@ -71,8 +71,20 @@
     }
     
     // ==================== NUMBER REPLACEMENT FUNCTIONS ====================
-    function normalizeToFancyButton1(text) {
-      return text.replace(/\.fancyButton\d+\b/g, '.fancyButton1');
+    // Selector-list-aware: a dual selector like
+    // ".fancyButton1 .text, .fancyButton1556 .text" is the deliberate,
+    // already-correct portable form the copy buttons produce — one half
+    // for the builder's live preview (placeholder), one half for the real
+    // saved page. Collapsing both down to "1" (the old behavior) destroys
+    // the real-ID half every time the builder reopens after a save,
+    // silently turning it into a duplicate of the placeholder. Only a
+    // stray id that is neither the placeholder nor this button's real id
+    // (e.g. pasted in from a different button's saved CSS) gets collapsed.
+    function normalizeToFancyButton1(text, currentButtonId) {
+      return text.replace(/\.fancyButton(\d+)\b/g, function(match, num) {
+        if (num === '1' || num === currentButtonId) return match;
+        return '.fancyButton1';
+      });
     }
     
     function denormalizeFromFancyButton1(text, selector) {
@@ -478,8 +490,9 @@
         // Skip if already processed
         if (textarea.dataset.cpFancyProcessed === 'true') return;
         
-        // Normalize to fancyButton1 for editing
-        const normalizedText = normalizeToFancyButton1(currentValue);
+        // Normalize to fancyButton1 for editing (preserving this button's
+        // real id, since a portable dual selector may already reference it)
+        const normalizedText = normalizeToFancyButton1(currentValue, buttonId);
         
         if (currentValue !== normalizedText) {
           textarea.value = normalizedText;
