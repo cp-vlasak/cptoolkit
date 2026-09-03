@@ -7,7 +7,6 @@
   var typingTimer = null;
   var nextRequestId = 1;
   var pendingCssMapRequests = {};
-  var popoverObservers = new WeakMap();
   var POPOVER_OBSERVER_OPTIONS = {
     childList: true,
     subtree: true,
@@ -127,15 +126,6 @@
     if (!hdnSkinID || !select) return;
 
     requestSkinCssMap(hdnSkinID.value).then(function(hasCssByIndex) {
-      // Writing opt.text below is itself a mutation inside the subtree the
-      // popover's own MutationObserver watches - confirmed live that
-      // without pausing it first, that write re-triggers the observer,
-      // which calls back in here again, forever (an infinite add/remove
-      // loop on the marker). Disconnect for the duration of the writes,
-      // then resume watching once they're done.
-      var observer = popoverObservers.get(popover);
-      if (observer) observer.disconnect();
-
       for (var i = 0; i < select.options.length; i++) {
         var opt = select.options[i];
         // Confirmed live: selecting a different option in this dropdown
@@ -164,8 +154,6 @@
         // elsewhere in this same popover.
         if (opt.text !== desired) opt.text = desired;
       }
-
-      if (observer) observer.observe(popover, POPOVER_OBSERVER_OPTIONS);
     });
   }
 
@@ -185,12 +173,29 @@
     // avoid re-attaching the select's own "change" listener. Re-running
     // enhancePopover on every mutation re-attaches that listener whenever
     // it's found missing, instead of only ever binding it once.
-    var popoverObserver = new MutationObserver(function() {
+    //
+    // Writing opt.text in refreshBadges is itself a mutation inside this
+    // same subtree, which would otherwise re-trigger this very callback
+    // forever (confirmed live: an infinite add/remove loop on the marker).
+    // mini-ide.js solves the equivalent problem by ignoring mutations
+    // whose target belongs to its own editor UI - do the same here.
+    // opt.text = "..." mutates the <option>'s own child text node, so its
+    // mutation record's target is the <option> itself (a descendant of
+    // select) - never the <select> element directly. A genuine external
+    // rebuild (the CMS replacing the select's children wholesale) targets
+    // the <select> itself instead, so checking specifically for "target is
+    // a descendant of select, not select itself" tells the two apart.
+    var popoverObserver = new MutationObserver(function(mutations) {
+      var select = getComponentSelect(popover);
+      var allOwnWrite = select && mutations.every(function(m) {
+        return m.target !== select && select.contains(m.target);
+      });
+      if (allOwnWrite) return;
+
       clearTimeout(scanTimer);
       scanTimer = setTimeout(function() { enhancePopover(popover); }, 80);
     });
 
-    popoverObservers.set(popover, popoverObserver);
     popoverObserver.observe(popover, POPOVER_OBSERVER_OPTIONS);
   }
 
