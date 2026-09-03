@@ -93,7 +93,13 @@
         }
         var original = opt.getAttribute(ORIGINAL_TEXT_ATTR);
         var index = parseInt(opt.value, 10);
-        opt.text = (hasCssByIndex[index] ? BULLET : "") + original;
+        var desired = (hasCssByIndex[index] ? BULLET : "") + original;
+        // Only touch the DOM when the label actually needs to change - the
+        // periodic safety poll (see init()) calls this every 1.5s, and a
+        // no-op write here was still enough small DOM noise to disrupt
+        // mini-ide.js's own timing-sensitive editor-upgrade detection
+        // elsewhere in this same popover.
+        if (opt.text !== desired) opt.text = desired;
       }
     });
   }
@@ -154,7 +160,16 @@
 
   function scanAndEnhance() {
     var popovers = getSkinEditorPopovers();
-    for (var i = 0; i < popovers.length; i++) enhancePopover(popovers[i]);
+    for (var i = 0; i < popovers.length; i++) {
+      // Once a popover is fully bound, its own MutationObserver and select
+      // "change" listener handle every future refresh - the periodic poll
+      // only exists to catch a popover that wasn't in the DOM yet the first
+      // time init() ran. Skipping already-bound ones here means this timer
+      // does nothing at all in the common case, instead of quietly writing
+      // to the DOM every 1.5s for the rest of the page's life.
+      if (popovers[i].hasAttribute("data-cp-observer-bound")) continue;
+      enhancePopover(popovers[i]);
+    }
   }
 
   function init() {
