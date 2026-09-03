@@ -144,7 +144,17 @@
         // tracking attribute). Deriving the clean label by stripping a
         // leading marker instead of relying on stored state makes this
         // idempotent and immune to that rebuild - no state to lose.
-        var original = opt.text.charAt(0) === BULLET ? opt.text.slice(BULLET.length) : opt.text;
+        // BULLET is a surrogate-pair emoji (2 UTF-16 code units), so the
+        // previous charAt(0) check only ever saw half of it and never
+        // matched - every refresh prepended another copy instead of
+        // recognizing the marker already there. Strip ALL leading copies
+        // (not just one) so labels that already accumulated several from
+        // that bug get cleaned back down to at most one, not stuck at
+        // whatever count they'd already reached.
+        var original = opt.text;
+        while (original.indexOf(BULLET) === 0) {
+          original = original.slice(BULLET.length);
+        }
         var index = parseInt(opt.value, 10);
         var desired = (hasCssByIndex[index] ? BULLET : "") + original;
         // Only touch the DOM when the label actually needs to change - the
