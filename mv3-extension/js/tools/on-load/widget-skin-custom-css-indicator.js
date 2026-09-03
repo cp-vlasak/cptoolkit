@@ -48,17 +48,27 @@
   }
 
   function refreshBadges(popover) {
-    if (typeof DesignCenter === "undefined" || !DesignCenter.themeJSON) return;
+    if (typeof DesignCenter === "undefined" || !DesignCenter.themeJSON) {
+      console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: DesignCenter.themeJSON not ready yet");
+      return;
+    }
 
     var hdnSkinID = popover.querySelector("#hdnSkinID");
     var select = getComponentSelect(popover);
-    if (!hdnSkinID || !select) return;
+    if (!hdnSkinID || !select) {
+      console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: hdnSkinID=" + !!hdnSkinID + " select=" + !!select);
+      return;
+    }
 
     var skin = DesignCenter.themeJSON.WidgetSkins.find(function(s) {
       return String(s.WidgetSkinID) === String(hdnSkinID.value);
     });
-    if (!skin) return;
+    if (!skin) {
+      console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: no skin found for WidgetSkinID=" + hdnSkinID.value);
+      return;
+    }
 
+    console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: applying badges for skin '" + skin.Name + "' (" + select.options.length + " options)");
     for (var i = 0; i < select.options.length; i++) {
       var opt = select.options[i];
       if (!opt.hasAttribute(ORIGINAL_TEXT_ATTR)) {
@@ -97,6 +107,7 @@
 
   function scanAndEnhance() {
     var popovers = getSkinEditorPopovers();
+    console.log("[CP Toolkit](widget-skin-custom-css-indicator) scanAndEnhance: found " + popovers.length + " popover(s)");
     for (var i = 0; i < popovers.length; i++) enhancePopover(popovers[i]);
   }
 
@@ -106,7 +117,10 @@
   }
 
   function bindObservers() {
-    if (observer || !window.MutationObserver || !document.body) return;
+    if (observer || !window.MutationObserver || !document.body) {
+      console.log("[CP Toolkit](widget-skin-custom-css-indicator) bindObservers: skipped (observer=" + !!observer + " MutationObserver=" + !!window.MutationObserver + " body=" + !!document.body + ")");
+      return;
+    }
 
     // The skin editor popover is a persistent DOM node that toggles
     // visibility via its own inline "style" (display: none/block) rather
@@ -130,6 +144,7 @@
       attributes: true,
       attributeFilter: ["style", "class"]
     });
+    console.log("[CP Toolkit](widget-skin-custom-css-indicator) bindObservers: observer attached");
   }
 
   function init() {
@@ -149,7 +164,10 @@
 
     detect_if_cp_site(function() {
       if (window.top !== window.self) return;
-      if (settings[thisTool] === false || !isThemesPage()) return;
+      if (settings[thisTool] === false || !isThemesPage()) {
+        console.log("[CP Toolkit](widget-skin-custom-css-indicator) init skipped: settingOff=" + (settings[thisTool] === false) + " isThemesPage=" + isThemesPage() + " path=" + window.location.pathname);
+        return;
+      }
 
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
