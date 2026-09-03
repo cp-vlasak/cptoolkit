@@ -108,9 +108,16 @@
   function bindObservers() {
     if (observer || !window.MutationObserver || !document.body) return;
 
+    // The skin editor popover is a persistent DOM node that toggles
+    // visibility via its own inline "style" (display: none/block) rather
+    // than being added/removed from the DOM, so added-node mutations alone
+    // never fire when it's opened. Watching style/class attribute changes
+    // too catches that open/close toggle.
     observer = new MutationObserver(function(mutations) {
       for (var i = 0; i < mutations.length; i++) {
-        if (mutations[i] && mutations[i].addedNodes && mutations[i].addedNodes.length) {
+        var m = mutations[i];
+        if (!m) continue;
+        if ((m.addedNodes && m.addedNodes.length) || m.type === "attributes") {
           scheduleScanAndEnhance();
           break;
         }
@@ -119,7 +126,9 @@
 
     observer.observe(document.body, {
       childList: true,
-      subtree: true
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style", "class"]
     });
   }
 
