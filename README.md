@@ -18,6 +18,8 @@ This repository is the canonical source for the CivicPlus internal MV3 toolkit.
 
 ## Important Current Features
 - Theme Manager Skin Organizer (`js/tools/on-load/theme-manager-skin-organizer.js`)
+- Theme Manager Font Filter — type-to-filter box in the Manage Fonts modal,
+  same idea as Layout Manager's filter (`js/tools/on-load/theme-manager-font-filter.js`)
 - Layout Manager Sorter (`js/tools/on-load/layout-manager-sorter.js`)
 - Custom CSS Deployment Manager:
   - `html/custom-css-deployments.html`
