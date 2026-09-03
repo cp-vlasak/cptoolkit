@@ -50,13 +50,15 @@
       document.dispatchEvent(new CustomEvent("cp-toolkit-request-skin-css-map", {
         detail: { skinId: skinId, requestId: requestId }
       }));
-      // Safety timeout in case the MAIN-world helper hasn't loaded yet.
+      // Safety timeout in case the MAIN-world helper hasn't loaded yet -
+      // matches the 3s timeout css-snippets.js uses for the equivalent
+      // copied-skins-helper.js bridge.
       setTimeout(function() {
         if (pendingCssMapRequests[requestId]) {
           delete pendingCssMapRequests[requestId];
           resolve({});
         }
-      }, 500);
+      }, 3000);
     });
   }
 
