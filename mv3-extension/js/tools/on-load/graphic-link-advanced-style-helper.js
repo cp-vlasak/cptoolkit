@@ -301,18 +301,13 @@
         'pointer-events:none !important;box-shadow:0 2px 6px rgba(0,0,0,.25) !important;' +
         'font-family:Arial,sans-serif !important;';
 
-      btn.addEventListener('mouseenter', function() { tooltip.style.setProperty('display', 'block', 'important'); });
-      btn.addEventListener('mouseleave', function() { tooltip.style.setProperty('display', 'none', 'important'); });
-
-      // No click listener here. Live testing showed a listener bound
-      // directly to a button created in one injection cycle can stop
-      // firing later — most likely the CMS replacing/duplicating this
-      // subtree when the panel re-renders on tab switch, which would
-      // silently drop any listener attached to the node it discards. A
-      // single delegated listener on the modal (bound once, in
-      // injectSelectorCopyButtons, and never destroyed for the modal's
-      // lifetime) reads these two data attributes fresh on every click
-      // instead, so it can't go stale the same way.
+      // No click or hover listeners here. "Add New Text Style" clones the
+      // previous panel's markup, and a markup clone never carries over
+      // JS-attached listeners — only delegated listeners bound once to the
+      // stable modal (in injectSelectorCopyButtons) survive that. Click
+      // already uses delegation; hover needs the same treatment
+      // (handleSelectorCopyHover, bound to 'mouseover'/'mouseout' since
+      // mouseenter/mouseleave don't bubble and can't be delegated).
       wrapper.dataset.cpBase = base;
       wrapper.dataset.cpHover = isHover ? 'true' : 'false';
 
@@ -352,6 +347,25 @@
       }
     }
 
+    function handleSelectorCopyHover(e) {
+      const wrapper = e.target.closest('.cpSelectorCopyBtn');
+      if (!wrapper) return;
+      const tooltip = wrapper.querySelector('span');
+      if (!tooltip) return;
+
+      if (e.type === 'mouseover') {
+        const cameFromSameWrapper = e.relatedTarget && e.relatedTarget.closest &&
+          e.relatedTarget.closest('.cpSelectorCopyBtn') === wrapper;
+        if (cameFromSameWrapper) return;
+        tooltip.style.setProperty('display', 'block', 'important');
+      } else if (e.type === 'mouseout') {
+        const goingToSameWrapper = e.relatedTarget && e.relatedTarget.closest &&
+          e.relatedTarget.closest('.cpSelectorCopyBtn') === wrapper;
+        if (goingToSameWrapper) return;
+        tooltip.style.setProperty('display', 'none', 'important');
+      }
+    }
+
     function injectSelectorCopyButtons() {
       const modal = getVisibleFancyButtonModal();
       if (!modal) return;
@@ -363,6 +377,8 @@
         // stopPropagation() elsewhere in the modal (e.g. a click-outside
         // guard) can swallow the event first.
         modal.addEventListener('click', handleSelectorCopyClick, true);
+        modal.addEventListener('mouseover', handleSelectorCopyHover);
+        modal.addEventListener('mouseout', handleSelectorCopyHover);
         modal.dataset.cpCopyDelegationBound = 'true';
         console.log('[CP Toolkit] copy-button click delegation bound to modal');
       }
