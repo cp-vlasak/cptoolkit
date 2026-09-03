@@ -179,6 +179,21 @@
       timingRisk: TIMING_RISK.LOW
     },
     {
+      id: 'widget-skin-custom-css-indicator',
+      kind: 'tool',
+      files: ['js/tools/on-load/widget-skin-custom-css-indicator.js'],
+      lanes: [LANES.ADMIN],
+      pathPrefixes: [
+        '/designcenter/themes/index',
+        '/admin/designcenter/themes/index'
+      ],
+      frameTarget: FRAME_TARGETS.TOP,
+      world: WORLDS.ISOLATED,
+      jquery: JQUERY.OPTIONAL,
+      timingRisk: TIMING_RISK.LOW,
+      notes: ['Injects MAIN-world helper file (widget-skin-custom-css-reader.js) to read DesignCenter.themeJSON; preserve helper relay.']
+    },
+    {
       id: 'widget-skin-default-override',
       kind: 'tool',
       files: ['js/tools/on-load/widget-skin-default-override.js'],

@@ -32,8 +32,12 @@ Use a separate local folder only when you intentionally need two unpacked versio
   - `js/tools/on-load/graphic-link-advanced-style-helper.js`
 - Theme Manager Font Filter (type-to-filter box in the Manage Fonts modal):
   - `js/tools/on-load/theme-manager-font-filter.js`
+- Widget Skin Custom CSS Indicator (🔻 marker on components with custom
+  CSS in a widget skin's Advanced tab dropdown):
+  - `js/tools/on-load/widget-skin-custom-css-indicator.js`
+  - `js/tools/on-load/helpers/widget-skin-custom-css-reader.js`
 
-See `docs/snippet-skin-and-button-libraries.md` for data contracts, workflows, and maintenance notes for these libraries. See `docs/graphic-link-fancy-button-selector-copy.md` for the Advanced Style Helper's DOM discoveries and event-delegation design.
+See `docs/snippet-skin-and-button-libraries.md` for data contracts, workflows, and maintenance notes for these libraries. See `docs/graphic-link-fancy-button-selector-copy.md` for the Advanced Style Helper's DOM discoveries and event-delegation design. See `docs/widget-skin-custom-css-indicator.md` for the Custom CSS Indicator's pitfalls (MAIN-world data access, the widget skin editor's option-rebuild-on-select behavior, and how it avoids interfering with mini-ide.js's Advanced-tab editor upgrade) — check it first if a future change causes widget skin or Advanced tab regressions.
 
 ## Validation
 
@@ -49,6 +53,7 @@ node --check js/tools/on-load/cp-ImportFancyButton.js
 node --check js/button-library-page.js
 node --check js/tools/on-load/graphic-link-advanced-style-helper.js
 node --check js/tools/on-load/theme-manager-font-filter.js
+node --check js/tools/on-load/widget-skin-custom-css-indicator.js
 node -e "JSON.parse(require('fs').readFileSync('data/on-load-tools.json','utf8')); console.log('on-load-tools.json ok')"
 node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8')); console.log('manifest ok')"
 git diff --check
