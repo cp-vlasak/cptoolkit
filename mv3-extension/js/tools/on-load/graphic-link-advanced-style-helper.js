@@ -304,25 +304,56 @@
       btn.addEventListener('mouseenter', function() { tooltip.style.setProperty('display', 'block', 'important'); });
       btn.addEventListener('mouseleave', function() { tooltip.style.setProperty('display', 'none', 'important'); });
 
-      btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        const buttonId = getFancyButtonId();
-        const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
-        copySelectorSnippetToClipboard(snippet);
-        const originalTooltipText = tooltip.textContent;
-        tooltip.textContent = 'Copied!';
-        setTimeout(() => { tooltip.textContent = originalTooltipText; }, 1200);
-      });
+      // No click listener here. Live testing showed a listener bound
+      // directly to a button created in one injection cycle can stop
+      // firing later — most likely the CMS replacing/duplicating this
+      // subtree when the panel re-renders on tab switch, which would
+      // silently drop any listener attached to the node it discards. A
+      // single delegated listener on the modal (bound once, in
+      // injectSelectorCopyButtons, and never destroyed for the modal's
+      // lifetime) reads these two data attributes fresh on every click
+      // instead, so it can't go stale the same way.
+      wrapper.dataset.cpBase = base;
+      wrapper.dataset.cpHover = isHover ? 'true' : 'false';
 
       wrapper.appendChild(btn);
       wrapper.appendChild(tooltip);
       return wrapper;
     }
 
+    function handleSelectorCopyClick(e) {
+      const wrapper = e.target.closest('.cpSelectorCopyBtn');
+      if (!wrapper) return;
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const base = wrapper.dataset.cpBase || '';
+      const isHover = wrapper.dataset.cpHover === 'true';
+      const buttonId = getFancyButtonId();
+      const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
+      copySelectorSnippetToClipboard(snippet);
+
+      const tooltip = wrapper.querySelector('span');
+      if (tooltip) {
+        const original = tooltip.dataset.cpOriginalText || tooltip.textContent;
+        tooltip.dataset.cpOriginalText = original;
+        tooltip.textContent = 'Copied!';
+        setTimeout(() => { tooltip.textContent = original; }, 1200);
+      }
+    }
+
     function injectSelectorCopyButtons() {
       const modal = getVisibleFancyButtonModal();
       if (!modal) return;
+
+      // Bound once per modal instance, never rebound — this is what makes
+      // the click handling immune to individual buttons being replaced.
+      if (!modal.dataset.cpCopyDelegationBound) {
+        modal.addEventListener('click', handleSelectorCopyClick);
+        modal.dataset.cpCopyDelegationBound = 'true';
+      }
 
       const tabSelect = modal.querySelector('select#selectedTab');
       if (!tabSelect) return;
