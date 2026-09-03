@@ -8,7 +8,7 @@
   var DEFAULT_BADGE_COLOR = "#6e7f99";
   var DEFAULT_UNCATEGORIZED_COLOR = "#9aa8bf";
   var DEFAULT_FILTER_MODE = "all";
-  var BASE_SKIN_NAMES = ["default", "features", "mega menu", "footer", "graphic links", "graphic buttons"];
+  var BASE_SKIN_NAMES = ["default", "features", "mega menu", "footer", "graphic links", "graphic buttons", "powered by"];
   var AUTO_CATEGORY_PALETTE = [
     "#4a90d9", "#50b878", "#e6a023", "#9b59b6",
     "#e67e22", "#1abc9c", "#e74c3c", "#34495e",

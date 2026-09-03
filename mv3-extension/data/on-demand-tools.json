@@ -106,7 +106,7 @@
   "Setup Defaults V2": {
     "file": "setupDefaultsV2.js",
     "urlPatterns": ["*://*/DesignCenter/Themes/*", "*://*/Admin/DesignCenter/Themes/*"],
-    "help": "Comprehensive theme setup tool that configures professional defaults for Site Styles (typography, spacing), Menu Styles (main nav, secondary nav, mega menu, dropdowns), Banner Styles, Container Styles, and Widget Skins (Default, Features, Social Media, Mega Menu, Graphic Buttons, Footer). Walks you through configuration options with prompts.",
+    "help": "Comprehensive theme setup tool that configures professional defaults for Site Styles (typography, spacing), Menu Styles (main nav, secondary nav, mega menu, dropdowns), Banner Styles, Container Styles, and Widget Skins (Default, Features, Social Media, Mega Menu, Graphic Buttons, Footer, Powered By). Walks you through configuration options with prompts.",
     "helpPages": "Theme Manager"
   }
 }
