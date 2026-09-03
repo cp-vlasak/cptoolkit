@@ -322,10 +322,17 @@
     }
 
     function handleSelectorCopyClick(e) {
+      console.log('[CP Toolkit] modal click received, target:', e.target.tagName, e.target.className);
       const wrapper = e.target.closest('.cpSelectorCopyBtn');
-      if (!wrapper) return;
+      if (!wrapper) {
+        console.log('[CP Toolkit] click was not on a selector-copy button, ignoring');
+        return;
+      }
       const btn = e.target.closest('button');
-      if (!btn) return;
+      if (!btn) {
+        console.log('[CP Toolkit] matched wrapper but not the inner button, ignoring');
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
 
@@ -333,6 +340,7 @@
       const isHover = wrapper.dataset.cpHover === 'true';
       const buttonId = getFancyButtonId();
       const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
+      console.log('[CP Toolkit] copying selector snippet:', snippet);
       copySelectorSnippetToClipboard(snippet);
 
       const tooltip = wrapper.querySelector('span');
@@ -351,8 +359,12 @@
       // Bound once per modal instance, never rebound — this is what makes
       // the click handling immune to individual buttons being replaced.
       if (!modal.dataset.cpCopyDelegationBound) {
-        modal.addEventListener('click', handleSelectorCopyClick);
+        // Capture phase: runs on the way down, before any bubble-phase
+        // stopPropagation() elsewhere in the modal (e.g. a click-outside
+        // guard) can swallow the event first.
+        modal.addEventListener('click', handleSelectorCopyClick, true);
         modal.dataset.cpCopyDelegationBound = 'true';
+        console.log('[CP Toolkit] copy-button click delegation bound to modal');
       }
 
       const tabSelect = modal.querySelector('select#selectedTab');
