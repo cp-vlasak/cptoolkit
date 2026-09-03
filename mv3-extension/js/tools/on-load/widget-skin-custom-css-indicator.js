@@ -1,11 +1,9 @@
 (function loadTool() {
   var thisTool = "widget-skin-custom-css-indicator";
-  var ENHANCED_ATTR = "data-cp-toolkit-skin-css-indicator";
   var ORIGINAL_TEXT_ATTR = "data-cp-original-text";
   var BULLET = "🔻"; // down-pointing red triangle — smallest genuinely-red glyph available
 
   var initialized = false;
-  var observer = null;
   var scanTimer = null;
   var typingTimer = null;
   var nextRequestId = 1;
@@ -100,10 +98,36 @@
     });
   }
 
+  function scheduleRefresh(popover) {
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(function() { refreshBadges(popover); }, 80);
+  }
+
+  // Watch only this one popover (not the whole document) for the
+  // open/close style toggle and the tab-content swap that happens when
+  // switching components. A document-wide observer was tried first, but
+  // its extra mutation noise interfered with mini-ide.js's own textarea
+  // upgrade detection elsewhere on the page - scoping to just this element
+  // keeps the footprint minimal.
+  function bindPopoverObserver(popover) {
+    if (popover.hasAttribute("data-cp-observer-bound") || !window.MutationObserver) return;
+    popover.setAttribute("data-cp-observer-bound", "true");
+
+    var popoverObserver = new MutationObserver(function() {
+      scheduleRefresh(popover);
+    });
+
+    popoverObserver.observe(popover, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style", "class"]
+    });
+  }
+
   function enhancePopover(popover) {
     refreshBadges(popover);
-    if (popover.hasAttribute(ENHANCED_ATTR)) return;
-    popover.setAttribute(ENHANCED_ATTR, "true");
+    bindPopoverObserver(popover);
 
     var select = getComponentSelect(popover);
     if (select && !select.hasAttribute("data-cp-bound")) {
@@ -114,52 +138,23 @@
       });
     }
 
-    // Keep badges live as the user types in the Advanced tab's CSS editor
-    // for whichever component is currently selected, so switching away from
-    // it shows an up-to-date badge without requiring a save first.
-    popover.addEventListener("input", function(e) {
-      if (e.target && e.target.tagName === "TEXTAREA") {
-        clearTimeout(typingTimer);
-        typingTimer = setTimeout(function() { refreshBadges(popover); }, 300);
-      }
-    });
+    if (!popover.hasAttribute("data-cp-input-bound")) {
+      popover.setAttribute("data-cp-input-bound", "true");
+      // Keep badges live as the user types in the Advanced tab's CSS editor
+      // for whichever component is currently selected, so switching away
+      // from it shows an up-to-date badge without requiring a save first.
+      popover.addEventListener("input", function(e) {
+        if (e.target && e.target.tagName === "TEXTAREA") {
+          clearTimeout(typingTimer);
+          typingTimer = setTimeout(function() { refreshBadges(popover); }, 300);
+        }
+      });
+    }
   }
 
   function scanAndEnhance() {
     var popovers = getSkinEditorPopovers();
     for (var i = 0; i < popovers.length; i++) enhancePopover(popovers[i]);
-  }
-
-  function scheduleScanAndEnhance() {
-    clearTimeout(scanTimer);
-    scanTimer = setTimeout(scanAndEnhance, 80);
-  }
-
-  function bindObservers() {
-    if (observer || !window.MutationObserver || !document.body) return;
-
-    // The skin editor popover is a persistent DOM node that toggles
-    // visibility via its own inline "style" (display: none/block) rather
-    // than being added/removed from the DOM, so added-node mutations alone
-    // never fire when it's opened. Watching style/class attribute changes
-    // too catches that open/close toggle.
-    observer = new MutationObserver(function(mutations) {
-      for (var i = 0; i < mutations.length; i++) {
-        var m = mutations[i];
-        if (!m) continue;
-        if ((m.addedNodes && m.addedNodes.length) || m.type === "attributes") {
-          scheduleScanAndEnhance();
-          break;
-        }
-      }
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["style", "class"]
-    });
   }
 
   function init() {
@@ -168,7 +163,6 @@
 
     injectPageHelper();
     scanAndEnhance();
-    bindObservers();
     console.log("[CP Toolkit] Loaded " + thisTool);
   }
 
