@@ -393,10 +393,23 @@
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
         headers.forEach((header, idx) => {
           const isHover = idx === 1;
-          if (header.parentElement.querySelector('.cpSelectorCopyBtn')) return;
-
           const parent = header.parentElement;
           const box = header.nextElementSibling; // .cpExpandCollapseBox
+
+          // "Add New Text Style" clones the previous panel's whole DOM
+          // subtree, which carries over an already-injected button —
+          // complete with its OLD data-cp-base from the panel it was
+          // cloned from. Checking only "does a button already exist" and
+          // skipping isn't enough: that stale clone survives with the
+          // wrong target baked in, silently. So an existing wrapper here
+          // always gets its data attributes overwritten with the base for
+          // *this* container; only a genuinely missing wrapper gets created.
+          const existing = parent.querySelector('.cpSelectorCopyBtn');
+          if (existing) {
+            existing.dataset.cpBase = base;
+            existing.dataset.cpHover = isHover ? 'true' : 'false';
+            return;
+          }
 
           // Constraints confirmed by live testing:
           // 1. header.nextElementSibling is the .cpExpandCollapseBox that
