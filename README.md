@@ -24,6 +24,10 @@ This repository is the canonical source for the CivicPlus internal MV3 toolkit.
   - `css/custom-css-deployments.css`
   - `js/custom-css-deployments-page.js`
   - `js/tools/on-load/custom-css-deployer.js`
+- Graphic Link Advanced Style Helper — Fancy Button ID badge and Advanced
+  Styles selector copy buttons (`js/tools/on-load/graphic-link-advanced-style-helper.js`).
+  See `docs/graphic-link-fancy-button-selector-copy.md` for the DOM
+  discoveries and event-delegation design this relies on.
 
 ## Session Timeout Behavior
 Timeout handling is aligned to Cody's simplified implementation:

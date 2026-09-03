@@ -71,8 +71,20 @@
     }
     
     // ==================== NUMBER REPLACEMENT FUNCTIONS ====================
-    function normalizeToFancyButton1(text) {
-      return text.replace(/\.fancyButton\d+\b/g, '.fancyButton1');
+    // Selector-list-aware: a dual selector like
+    // ".fancyButton1 .text, .fancyButton1556 .text" is the deliberate,
+    // already-correct portable form the copy buttons produce — one half
+    // for the builder's live preview (placeholder), one half for the real
+    // saved page. Collapsing both down to "1" (the old behavior) destroys
+    // the real-ID half every time the builder reopens after a save,
+    // silently turning it into a duplicate of the placeholder. Only a
+    // stray id that is neither the placeholder nor this button's real id
+    // (e.g. pasted in from a different button's saved CSS) gets collapsed.
+    function normalizeToFancyButton1(text, currentButtonId) {
+      return text.replace(/\.fancyButton(\d+)\b/g, function(match, num) {
+        if (num === '1' || num === currentButtonId) return match;
+        return '.fancyButton1';
+      });
     }
     
     function denormalizeFromFancyButton1(text, selector) {
@@ -161,11 +173,25 @@
       });
     }
 
+    // The CMS can leave a previous Fancy Button Builder modal's DOM behind
+    // (hidden) when it is reopened without a full page reload. Any lookup
+    // that assumes there is only one #selectedTab or one #fancyButton*Misc
+    // in the whole document can silently grab a stale, hidden instance
+    // instead of the one actually on screen. Scoping to the visible modal
+    // avoids that.
+    function getVisibleFancyButtonModal() {
+      const modals = document.querySelectorAll('.modalContainer.fancyButtonBuilder');
+      for (const m of modals) {
+        if (m.offsetParent !== null) return m;
+      }
+      return modals[0] || null;
+    }
+
     // ==================== FANCY BUTTON ID BADGE ====================
     // Shows the real .fancyButtonN class next to the Fancy Button Builder
     // modal title so the number is visible without opening DevTools.
     function injectFancyButtonIdBadge() {
-      const modal = document.querySelector('.modalContainer.fancyButtonBuilder');
+      const modal = getVisibleFancyButtonModal();
       if (!modal) return;
 
       const titleEl = modal.querySelector('h3.modalTitle');
@@ -190,35 +216,287 @@
         : 'This button has not been saved yet, so it does not have a permanent ID.';
     }
 
+    // ==================== SELECTOR COPY BUTTONS ====================
+    // Each Advanced Styles panel (Background outer/inner, Default Text
+    // Style, and any number of added Text Styles) is identified by the
+    // #selectedTab dropdown's option value, e.g. "#fancyButtonText2".
+    // That id is a stable, CMS-controlled anchor — unlike the on-screen
+    // selector label, which the native UI renders identically for
+    // Background (inner), Default Text Style, and every Text Style N.
+    // The real per-style class (.textStyleN) comes from cp-ImportFancyButton.js,
+    // which already relies on that same rendered markup.
+    function getSelectorBaseForContainerId(containerId) {
+      if (containerId === 'fancyButtonOuterBackground') return '';
+      if (containerId === 'fancyButtonInnerBackground') return ' .text';
+      if (containerId === 'fancyButtonText') return ' .text';
+      const styleMatch = containerId.match(/^fancyButtonText(\d+)$/);
+      if (styleMatch) return ' .textStyle' + styleMatch[1];
+      return null;
+    }
+
+    // The ADV STYLES content for a level lives in a separate "Misc" panel,
+    // not the panel named by the #selectedTab option value itself (that one
+    // only holds Background & Border / Spacing & Sizing fields). Confirmed
+    // by direct measurement (getBoundingClientRect + computed display) of
+    // each candidate container:
+    //   - Background outer/inner each get their own permanent Misc panel.
+    //   - Default Text Style's panel is #fancyButtonTextStyleMisc (no suffix).
+    //   - Each added Text Style N gets its OWN panel, #fancyButtonTextStyleMiscN
+    //     — NOT a shared panel. (An earlier version of this code assumed all
+    //     Text Styles shared one #fancyButtonTextStyleMisc container; that
+    //     was wrong — that id belongs only to Default Text Style, is real,
+    //     and stays in the DOM with display:none once a numbered style is
+    //     added, which is why buttons injected into it were never visible.)
+    function getMiscContainerId(containerId) {
+      if (containerId === 'fancyButtonOuterBackground') return 'fancyButtonOuterBackgroundMisc';
+      if (containerId === 'fancyButtonInnerBackground') return 'fancyButtonInnerBackgroundMisc';
+      if (containerId === 'fancyButtonText') return 'fancyButtonTextStyleMisc';
+      const styleMatch = containerId.match(/^fancyButtonText(\d+)$/);
+      if (styleMatch) return 'fancyButtonTextStyleMisc' + styleMatch[1];
+      return null;
+    }
+
+    function buildSelectorCopySnippet(buttonId, base, isHover) {
+      const state = isHover ? ':is(:hover, :focus, :active)' : '';
+      let snippet = '.fancyButton1' + state + base;
+      if (buttonId && buttonId !== '1') {
+        snippet += ',\n.fancyButton' + buttonId + state + base;
+      }
+      return '}\n\n' + snippet + ' {';
+    }
+
+    function copySelectorSnippetToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => fallbackCopySnippet(text));
+      } else {
+        fallbackCopySnippet(text);
+      }
+    }
+
+    function fallbackCopySnippet(text) {
+      const scratch = document.createElement('textarea');
+      scratch.value = text;
+      scratch.style.position = 'fixed';
+      scratch.style.opacity = '0';
+      document.body.appendChild(scratch);
+      scratch.select();
+      try { document.execCommand('copy'); } catch (err) { /* no-op */ }
+      document.body.removeChild(scratch);
+    }
+
+    function makeSelectorCopyButton(base, isHover) {
+      const wrapper = document.createElement('span');
+      wrapper.className = 'cpSelectorCopyBtn';
+      wrapper.style.cssText = 'position:relative !important;display:inline-flex !important;' +
+        'align-items:center !important;margin:0 0 0 10px !important;';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = '⧉';
+      btn.style.cssText = 'display:inline-flex !important;align-items:center !important;' +
+        'justify-content:center !important;width:20px !important;height:20px !important;' +
+        'min-width:20px !important;max-width:20px !important;min-height:20px !important;' +
+        'max-height:20px !important;margin:0 !important;padding:0 !important;' +
+        'font-size:12px !important;line-height:1 !important;cursor:pointer !important;' +
+        'border:1px solid #b9c6cf !important;border-radius:4px !important;' +
+        'background:#f5f8fa !important;color:#0b5b8a !important;box-shadow:none !important;' +
+        'box-sizing:border-box !important;appearance:none !important;' +
+        '-webkit-appearance:none !important;';
+
+      const tooltip = document.createElement('span');
+      tooltip.textContent = 'Copy a starting selector for a new rule at this level';
+      tooltip.style.cssText = 'position:absolute !important;top:130% !important;' +
+        'left:0 !important;' +
+        'background:#1f2d3a !important;color:#fff !important;padding:5px 9px !important;' +
+        'border-radius:4px !important;font-size:11px !important;line-height:1.3 !important;' +
+        'white-space:nowrap !important;display:none !important;z-index:10000 !important;' +
+        'pointer-events:none !important;box-shadow:0 2px 6px rgba(0,0,0,.25) !important;' +
+        'font-family:Arial,sans-serif !important;';
+
+      // No click or hover listeners here. "Add New Text Style" clones the
+      // previous panel's markup, and a markup clone never carries over
+      // JS-attached listeners — only delegated listeners bound once to the
+      // stable modal (in injectSelectorCopyButtons) survive that. Click
+      // already uses delegation; hover needs the same treatment
+      // (handleSelectorCopyHover, bound to 'mouseover'/'mouseout' since
+      // mouseenter/mouseleave don't bubble and can't be delegated).
+      wrapper.dataset.cpBase = base;
+      wrapper.dataset.cpHover = isHover ? 'true' : 'false';
+
+      wrapper.appendChild(btn);
+      wrapper.appendChild(tooltip);
+      return wrapper;
+    }
+
+    function handleSelectorCopyClick(e) {
+      console.log('[CP Toolkit] modal click received, target:', e.target.tagName, e.target.className);
+      const wrapper = e.target.closest('.cpSelectorCopyBtn');
+      if (!wrapper) {
+        console.log('[CP Toolkit] click was not on a selector-copy button, ignoring');
+        return;
+      }
+      const btn = e.target.closest('button');
+      if (!btn) {
+        console.log('[CP Toolkit] matched wrapper but not the inner button, ignoring');
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+
+      const base = wrapper.dataset.cpBase || '';
+      const isHover = wrapper.dataset.cpHover === 'true';
+      const buttonId = getFancyButtonId();
+      const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
+      console.log('[CP Toolkit] copying selector snippet:', snippet);
+      copySelectorSnippetToClipboard(snippet);
+
+      const tooltip = wrapper.querySelector('span');
+      if (tooltip) {
+        const original = tooltip.dataset.cpOriginalText || tooltip.textContent;
+        tooltip.dataset.cpOriginalText = original;
+        tooltip.textContent = 'Copied!';
+        setTimeout(() => { tooltip.textContent = original; }, 1200);
+      }
+    }
+
+    function handleSelectorCopyHover(e) {
+      const wrapper = e.target.closest('.cpSelectorCopyBtn');
+      if (!wrapper) return;
+      const tooltip = wrapper.querySelector('span');
+      if (!tooltip) return;
+
+      if (e.type === 'mouseover') {
+        const cameFromSameWrapper = e.relatedTarget && e.relatedTarget.closest &&
+          e.relatedTarget.closest('.cpSelectorCopyBtn') === wrapper;
+        if (cameFromSameWrapper) return;
+        tooltip.style.setProperty('display', 'block', 'important');
+      } else if (e.type === 'mouseout') {
+        const goingToSameWrapper = e.relatedTarget && e.relatedTarget.closest &&
+          e.relatedTarget.closest('.cpSelectorCopyBtn') === wrapper;
+        if (goingToSameWrapper) return;
+        tooltip.style.setProperty('display', 'none', 'important');
+      }
+    }
+
+    function injectSelectorCopyButtons() {
+      const modal = getVisibleFancyButtonModal();
+      if (!modal) return;
+
+      // Bound once per modal instance, never rebound — this is what makes
+      // the click handling immune to individual buttons being replaced.
+      if (!modal.dataset.cpCopyDelegationBound) {
+        // Capture phase: runs on the way down, before any bubble-phase
+        // stopPropagation() elsewhere in the modal (e.g. a click-outside
+        // guard) can swallow the event first.
+        modal.addEventListener('click', handleSelectorCopyClick, true);
+        modal.addEventListener('mouseover', handleSelectorCopyHover);
+        modal.addEventListener('mouseout', handleSelectorCopyHover);
+        modal.dataset.cpCopyDelegationBound = 'true';
+        console.log('[CP Toolkit] copy-button click delegation bound to modal');
+      }
+
+      const tabSelect = modal.querySelector('select#selectedTab');
+      if (!tabSelect) return;
+
+      // Map, not Set: each Misc container now maps 1:1 to a specific level,
+      // so the correct base class can be baked in once, from the DOM
+      // structure itself, rather than re-read from the dropdown at click
+      // time (which proved unreliable immediately after adding a new Text
+      // Style, before the dropdown's own value settles).
+      const miscToBase = new Map();
+      tabSelect.querySelectorAll('option').forEach(opt => {
+        const containerId = (opt.value || '').replace(/^#/, '');
+        if (!containerId) return;
+        const miscId = getMiscContainerId(containerId);
+        const base = getSelectorBaseForContainerId(containerId);
+        if (miscId && base !== null && !miscToBase.has(miscId)) {
+          miscToBase.set(miscId, base);
+        }
+      });
+
+      miscToBase.forEach((base, miscId) => {
+        const container = modal.querySelector('#' + miscId);
+        if (!container) return;
+
+        const headers = container.querySelectorAll('p.cpExpandCollapseControl');
+        headers.forEach((header, idx) => {
+          const isHover = idx === 1;
+          const parent = header.parentElement;
+          const box = header.nextElementSibling; // .cpExpandCollapseBox
+
+          // "Add New Text Style" clones the previous panel's whole DOM
+          // subtree, which carries over an already-injected button —
+          // complete with its OLD data-cp-base from the panel it was
+          // cloned from. Checking only "does a button already exist" and
+          // skipping isn't enough: that stale clone survives with the
+          // wrong target baked in, silently. So an existing wrapper here
+          // always gets its data attributes overwritten with the base for
+          // *this* container; only a genuinely missing wrapper gets created.
+          const existing = parent.querySelector('.cpSelectorCopyBtn');
+          if (existing) {
+            existing.dataset.cpBase = base;
+            existing.dataset.cpHover = isHover ? 'true' : 'false';
+            return;
+          }
+
+          // Constraints confirmed by live testing:
+          // 1. header.nextElementSibling is the .cpExpandCollapseBox that
+          //    holds the textarea, and the native toggle depends on that
+          //    direct adjacency — the button must never be inserted there.
+          // 2. The header's own toggle listener fires before a descendant's
+          //    handler could stop it (capture phase and/or mousedown), so
+          //    the button must never be a descendant of the header either.
+          // The button is therefore inserted as a DOM sibling *before* the
+          // header (preserving both constraints), and flexbox `order` on
+          // the shared parent visually moves it to after the header text —
+          // `order` changes paint order only, never nextElementSibling, so
+          // the toggle keeps working. (An earlier attempt used
+          // `display:inline-block` on the header for same-line layout; that
+          // introduced a large gap above the content box, a known
+          // inline-block whitespace quirk. flex has no such issue —
+          // measured zero gap live.)
+          parent.style.setProperty('display', 'flex', 'important');
+          parent.style.setProperty('flex-wrap', 'wrap', 'important');
+          parent.style.setProperty('align-items', 'center', 'important');
+          header.style.setProperty('order', '1', 'important');
+          if (box) {
+            box.style.setProperty('order', '3', 'important');
+            box.style.setProperty('flex-basis', '100%', 'important');
+          }
+
+          const btn = makeSelectorCopyButton(base, isHover);
+          btn.style.setProperty('order', '2', 'important');
+          header.insertAdjacentElement('beforebegin', btn);
+        });
+      });
+    }
+
     // ==================== PROCESS TEXTAREAS ====================
+    // Removed: this used to rewrite a saved textarea's value on every load
+    // to normalize .fancyButtonN back to the placeholder .fancyButton1 for
+    // editing/preview. That destructive rewrite is exactly the anti-pattern
+    // the copy-buttons feature's regression investigation flagged — it
+    // silently collapsed a deliberate dual/portable selector (one half for
+    // preview, one half for the real saved page) into a duplicate every
+    // time the builder reopened. No longer touches persisted values at all.
     function processTextareas() {
       const buttonId = getFancyButtonId();
       if (!buttonId) return;
-      
+
       const textareas = document.querySelectorAll(
         'textarea#fancyButtonNormalMiscStyles, ' +
         'textarea#fancyButtonHoverMiscStyles, ' +
         'textarea[id^="fancyButton"][id$="MiscStyles"], ' +
         'textarea.autoUpdate'
       );
-      
+
       textareas.forEach(textarea => {
         const currentValue = textarea.value;
         if (!currentValue) return;
-        
+
         // Skip if already processed
         if (textarea.dataset.cpFancyProcessed === 'true') return;
-        
-        // Normalize to fancyButton1 for editing
-        const normalizedText = normalizeToFancyButton1(currentValue);
-        
-        if (currentValue !== normalizedText) {
-          textarea.value = normalizedText;
-          textarea.dispatchEvent(new Event('change', { bubbles: true }));
-          textarea.dispatchEvent(new Event('input', { bubbles: true }));
-          // console.log(TOOLKIT_NAME + ' ✓ Normalized to .fancyButton1 in #' + (textarea.id || 'textarea'));
-        }
-        
+
         textarea.dataset.cpFancyProcessed = 'true';
       });
     }
@@ -361,6 +639,7 @@
           fixHtmlEncodedStyles();
           fixRenderedFancyButtonStyles();
           injectFancyButtonIdBadge();
+          injectSelectorCopyButtons();
         }, 300);
       });
       
@@ -381,6 +660,7 @@
         processTextareas();
         fixRenderedFancyButtonStyles();
         injectFancyButtonIdBadge();
+        injectSelectorCopyButtons();
         setupInsertButtonHandler();
         startObserving();
       });
@@ -389,10 +669,11 @@
       processTextareas();
       fixRenderedFancyButtonStyles();
       injectFancyButtonIdBadge();
+      injectSelectorCopyButtons();
       setupInsertButtonHandler();
       startObserving();
     }
-    
+
     // Expose API
     window.CPToolkit = window.CPToolkit || {};
     window.CPToolkit.graphicLinkHelper = {
@@ -402,7 +683,8 @@
       denormalizeFromFancyButton1: denormalizeFromFancyButton1,
       fixRenderedFancyButtonStyles: fixRenderedFancyButtonStyles,
       processTextareas: processTextareas,
-      injectFancyButtonIdBadge: injectFancyButtonIdBadge
+      injectFancyButtonIdBadge: injectFancyButtonIdBadge,
+      injectSelectorCopyButtons: injectSelectorCopyButtons
     };
     
     // console.log(TOOLKIT_NAME + ' ✓ Ready');

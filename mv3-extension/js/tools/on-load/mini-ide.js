@@ -4314,9 +4314,18 @@
         return text.replace(new RegExp('\\.fancyButton' + buttonId + '\\b', 'g'), '.fancyButton1');
     }
     
-    // Replace ALL fancyButton numbers with fancyButton1 for editing
-    function normalizeToFancyButton1(text) {
-        return text.replace(/\.fancyButton\d+\b/g, '.fancyButton1');
+    // Replace fancyButton numbers with fancyButton1 for editing, except the
+    // current button's own real id. A dual/portable selector like
+    // ".fancyButton1 .text, .fancyButton1556 .text" is deliberate — one
+    // half for this editor's own preview, one half for the real saved
+    // page — and collapsing the real-id half here on every reopen was
+    // silently destroying it. Only a stray id that belongs to neither the
+    // placeholder nor this button gets collapsed.
+    function normalizeToFancyButton1(text, currentButtonId) {
+        return text.replace(/\.fancyButton(\d+)\b/g, function(match, num) {
+            if (num === '1' || num === currentButtonId) return match;
+            return '.fancyButton1';
+        });
     }
     
     // Replace fancyButton1 with the actual selector
@@ -4344,7 +4353,14 @@
         const skinId = getSkinId();
         const fancyButtonId = getFancyButtonId();
 
-        // Initial text replacement for both skin and fancy button numbers
+        // Initial text replacement for skin numbers only. The fancy-button
+        // replacement that used to run here was removed: it rewrote a saved
+        // textarea's value on every load to collapse .fancyButtonN back to
+        // the placeholder .fancyButton1, which silently destroyed a
+        // deliberate dual/portable selector (one half for this editor's own
+        // preview, one half for the real saved page) every time the builder
+        // reopened. This editor no longer touches persisted fancy-button
+        // selector values at all.
         let initialText = textarea.value;
         let wasModified = false;
 
@@ -4355,16 +4371,6 @@
                 initialText = replacedText;
                 wasModified = true;
                 // console.log(TOOLKIT_NAME + ' Replaced initial .skin numbers with .skin' + skinId); // Phase 3: Reduced logging
-            }
-        }
-
-        // Handle .fancyButton replacement (convert ALL fancyButtonN to .fancyButton1 for editing)
-        if (fancyButtonId) {
-            const replacedText = normalizeToFancyButton1(initialText);
-            if (initialText !== replacedText) {
-                initialText = replacedText;
-                wasModified = true;
-                // console.log(TOOLKIT_NAME + ' Normalized all .fancyButtonN to .fancyButton1 for editing (actual: ' + currentFancyButtonSelector + ')'); // Phase 3: Reduced logging
             }
         }
 
