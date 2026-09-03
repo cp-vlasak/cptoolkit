@@ -1522,7 +1522,8 @@
     'Features',
     'Mega Menu',
     'Graphic Buttons',
-    'Footer'
+    'Footer',
+    'Powered By'
   ];
 
   /**
@@ -1718,7 +1719,7 @@
         </div>
         <div id="cp-toolkit-amc-skins-content" style="display: none; padding: 16px; border-top: 1px solid #e0e0e0; background: #fff;">
           <p style="margin: 0 0 12px; color: #666; font-size: 13px;">
-            Creates 5 widget skins: <strong>Default</strong>, <strong>Features</strong>, <strong>Mega Menu</strong>, <strong>Graphic Buttons</strong>, <strong>Footer</strong>
+            Creates 6 widget skins: <strong>Default</strong>, <strong>Features</strong>, <strong>Mega Menu</strong>, <strong>Graphic Buttons</strong>, <strong>Footer</strong>, <strong>Powered By</strong>
           </p>
           <div style="display: flex; align-items: center; gap: 12px;">
             <label style="font-size: 13px; color: #555; white-space: nowrap;">Name prefix (optional):</label>

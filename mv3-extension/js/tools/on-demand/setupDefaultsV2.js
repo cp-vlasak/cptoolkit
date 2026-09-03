@@ -525,9 +525,9 @@ padding-right: 10px;
         cs[i] = copyStyles(item, {
           DefaultWidgetSkinID: skinMap.Footer.skinIDs[0] || 0
         });
-      } else if (itemIsContainer(item, "#poweredByContainerTS")) {
+      } else if (itemIsContainer(item, "#poweredByTS")) {
         cs[i] = copyStyles(item, {
-          DefaultWidgetSkinID: skinMap.Footer.skinIDs[0] || 0,
+          DefaultWidgetSkinID: skinMap["Powered By"].skinIDs[0] || skinMap.Footer.skinIDs[0] || 0,
           MiscellaneousStyles: `\
 }
 
@@ -803,6 +803,36 @@ background-color: ${getColor(6) || "#333"};
     return skin;
   }
 
+  function setupPoweredBySkin(skin) {
+    /* Wrapper — the sizing/layout that used to be hardcoded in the byline
+       widget's own inline <style> block now lives here, scoped to this
+       skin, so it survives regardless of which theme it's used on.
+       "fill: currentColor" is left in place on purpose: it's what makes
+       the SVG icon follow this skin's Item FontColor automatically once
+       that's set (through the skin, manually, in Theme Manager) instead
+       of being a color hardcoded into the widget markup. */
+    skin.Components[0] = copyStyles(skin.Components[0], {
+      FontSize: null,
+      MiscellaneousStyles: `\
+}
+.widget.skin${skin.WidgetSkinID} .cpBylineIconTS {
+  fill: currentColor;
+  width: 39px;
+  height: 26px;
+  display: inline;
+  vertical-align: middle;
+}`
+    });
+
+    /* Item Link — the "CivicPlus" anchor inside the byline text */
+    skin.Components[7] = copyStyles(skin.Components[7], {
+      LinkNormalUnderlined: true,
+      LinkHoverUnderlined: true
+    });
+
+    return skin;
+  }
+
   function setupFooterSkin(skin) {
     /* Wrapper */
     skin.Components[0] = copyStyles(skin.Components[0], {
@@ -860,6 +890,11 @@ background-color: ${getColor(6) || "#333"};
     Footer: {
       matching: ["footer"],
       fn: setupFooterSkin,
+      skinIDs: []
+    },
+    "Powered By": {
+      matching: ["powered", "byline"],
+      fn: setupPoweredBySkin,
       skinIDs: []
     }
   };
