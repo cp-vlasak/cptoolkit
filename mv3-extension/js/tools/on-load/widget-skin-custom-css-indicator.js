@@ -163,6 +163,13 @@
 
     injectPageHelper();
     scanAndEnhance();
+
+    // The popover may not exist in the DOM yet at this exact moment (the
+    // CMS can insert it after this script's own init runs). A low-frequency
+    // poll (same pattern as widget-skin-advanced-style-helper.js) catches
+    // that without adding any MutationObserver traffic of its own.
+    setInterval(scanAndEnhance, 1500);
+
     console.log("[CP Toolkit] Loaded " + thisTool);
   }
 
