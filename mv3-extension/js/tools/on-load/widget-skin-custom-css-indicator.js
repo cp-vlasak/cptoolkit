@@ -95,9 +95,15 @@
       }
       if (!allInts) continue;
 
-      var consecutive = values.every(function(v, idx) { return idx === 0 || v === values[idx - 1] + 1; });
+      // Some widget types display their options out of index order (a
+      // calendar widget shows "Calendar Wrapper" first even though its
+      // real index, 23, is the highest in the set) - sort before checking
+      // consecutiveness so display order never matters, only the set of
+      // values actually present.
+      var sorted = values.slice().sort(function(a, b) { return a - b; });
+      var consecutive = sorted.every(function(v, idx) { return idx === 0 || v === sorted[idx - 1] + 1; });
       if (!consecutive) continue;
-      if (VIEW_BASE_INDICES.indexOf(values[0]) === -1) continue;
+      if (VIEW_BASE_INDICES.indexOf(sorted[0]) === -1) continue;
 
       // Prefer the candidate with the most options if more than one
       // matches (a small unrelated enum dropdown could coincidentally
