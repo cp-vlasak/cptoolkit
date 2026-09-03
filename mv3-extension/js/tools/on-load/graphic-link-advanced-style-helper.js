@@ -276,7 +276,7 @@
       const wrapper = document.createElement('span');
       wrapper.className = 'cpSelectorCopyBtn';
       wrapper.style.cssText = 'position:relative !important;display:inline-flex !important;' +
-        'vertical-align:middle !important;margin:0 10px 0 0 !important;';
+        'align-items:center !important;margin:0 0 0 10px !important;';
 
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -350,26 +350,39 @@
         const headers = container.querySelectorAll('p.cpExpandCollapseControl');
         headers.forEach((header, idx) => {
           const isHover = idx === 1;
-          // Two constraints, both confirmed by testing:
+          if (header.parentElement.querySelector('.cpSelectorCopyBtn')) return;
+
+          const parent = header.parentElement;
+          const box = header.nextElementSibling; // .cpExpandCollapseBox
+
+          // Constraints confirmed by live testing:
           // 1. header.nextElementSibling is the .cpExpandCollapseBox that
           //    holds the textarea, and the native toggle depends on that
-          //    direct adjacency — inserting a sibling there breaks it.
-          // 2. The header's own toggle listener appears to be bound on
-          //    mousedown (not click), and/or in the capture phase, so it
-          //    fires before any handler on a descendant could stop it.
-          //    Appending inside the header <p> makes the button a
-          //    descendant, so every click on it also toggles the row.
-          // Inserting as a preceding sibling (never a descendant, and
-          // never touching header's own next-sibling) avoids both.
-          // The header <p> is block-level by default, so a preceding
-          // sibling still renders on its own line above it. Switching the
-          // header itself to inline-block (its own layout only — no effect
-          // on its children or the click listener bound to it) lets it flow
-          // onto the same line as the button. Verified live: the collapse
-          // toggle still works when the header text itself is clicked.
-          if (header.parentElement.querySelector('.cpSelectorCopyBtn')) return;
-          header.style.setProperty('display', 'inline-block', 'important');
-          header.insertAdjacentElement('beforebegin', makeSelectorCopyButton(base, isHover));
+          //    direct adjacency — the button must never be inserted there.
+          // 2. The header's own toggle listener fires before a descendant's
+          //    handler could stop it (capture phase and/or mousedown), so
+          //    the button must never be a descendant of the header either.
+          // The button is therefore inserted as a DOM sibling *before* the
+          // header (preserving both constraints), and flexbox `order` on
+          // the shared parent visually moves it to after the header text —
+          // `order` changes paint order only, never nextElementSibling, so
+          // the toggle keeps working. (An earlier attempt used
+          // `display:inline-block` on the header for same-line layout; that
+          // introduced a large gap above the content box, a known
+          // inline-block whitespace quirk. flex has no such issue —
+          // measured zero gap live.)
+          parent.style.setProperty('display', 'flex', 'important');
+          parent.style.setProperty('flex-wrap', 'wrap', 'important');
+          parent.style.setProperty('align-items', 'center', 'important');
+          header.style.setProperty('order', '1', 'important');
+          if (box) {
+            box.style.setProperty('order', '3', 'important');
+            box.style.setProperty('flex-basis', '100%', 'important');
+          }
+
+          const btn = makeSelectorCopyButton(base, isHover);
+          btn.style.setProperty('order', '2', 'important');
+          header.insertAdjacentElement('beforebegin', btn);
         });
       });
     }
