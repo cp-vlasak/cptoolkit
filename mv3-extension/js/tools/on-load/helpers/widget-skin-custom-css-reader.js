@@ -7,6 +7,30 @@
   if (window.__CPToolkit_skinCssReaderInjected) return;
   window.__CPToolkit_skinCssReaderInjected = true;
 
+  // A component's Advanced tab can combine several raw-CSS fields into one
+  // view - e.g. a Link-type component (Item Link, "Read on"/"View all"/
+  // "RSS" Link) shows its :link, :hover and :visited blocks stacked
+  // together, each backed by a separate field. Checking only
+  // MiscellaneousStyles missed all of those entirely.
+  var CSS_FIELDS = [
+    'MiscellaneousStyles',
+    'HeaderMiscellaneousStyles1',
+    'HeaderMiscellaneousStyles2',
+    'HeaderMiscellaneousStyles3',
+    'LinkNormalMiscellaneousStyles',
+    'LinkHoverMiscellaneousStyles',
+    'LinkVisitedMiscellaneousStyles'
+  ];
+
+  function componentHasCustomCss(component) {
+    if (!component) return false;
+    for (var i = 0; i < CSS_FIELDS.length; i++) {
+      var css = component[CSS_FIELDS[i]];
+      if (typeof css === 'string' && css.trim().length > 0) return true;
+    }
+    return false;
+  }
+
   document.addEventListener('cp-toolkit-request-skin-css-map', function(e) {
     var detail = e.detail || {};
     var skinId = detail.skinId;
@@ -21,8 +45,7 @@
 
       if (skin && skin.Components) {
         skin.Components.forEach(function(component, index) {
-          var css = component && component.MiscellaneousStyles;
-          hasCssByIndex[index] = typeof css === 'string' && css.trim().length > 0;
+          hasCssByIndex[index] = componentHasCustomCss(component);
         });
       }
     } catch (err) {
