@@ -169,6 +169,13 @@
     "version-introduced": "1.1.0",
     "help-text": "On /DesignCenter/Themes/Index, this adds a category manager for Container Preview skins. Create your own categories (with colors), assign skins to categories, filter to include/exclude selected categories, and show color-coded skin ID badges next to each skin name."
   },
+  "theme-manager-font-filter": {
+    "name": "Theme Manager Font Filter",
+    "description": "Adds a type-to-filter search box to the Manage Fonts modal in Theme Manager, matching Layout Manager's filter.",
+    "enabled-by-default": true,
+    "version-introduced": "1.1.7",
+    "help-text": "On /DesignCenter/Themes/Index, opening Actions > Manage Fonts adds a filter box below the modal title that narrows the currently active tab's font list (Web Fonts or Standard Fonts) as you type. Also shortens the 'Sort Alphabetically' button label to 'Sort A-Z' and reduces its size so it fits alongside the filter box."
+  },
   "title-changer": {
     "name": "Title Changer",
     "description": "Add the current page's title to the tab title.",
