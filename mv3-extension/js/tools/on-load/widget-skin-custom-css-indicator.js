@@ -1,6 +1,5 @@
 (function loadTool() {
   var thisTool = "widget-skin-custom-css-indicator";
-  var ORIGINAL_TEXT_ATTR = "data-cp-original-text";
   var BULLET = "🔻"; // down-pointing red triangle — smallest genuinely-red glyph available
 
   var initialized = false;
@@ -8,6 +7,13 @@
   var typingTimer = null;
   var nextRequestId = 1;
   var pendingCssMapRequests = {};
+  var popoverObservers = new WeakMap();
+  var POPOVER_OBSERVER_OPTIONS = {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["style", "class"]
+  };
 
   function isThemesPage() {
     var path = String(window.location.pathname || "").toLowerCase();
@@ -119,12 +125,24 @@
     if (!hdnSkinID || !select) return;
 
     requestSkinCssMap(hdnSkinID.value).then(function(hasCssByIndex) {
+      // Writing opt.text below is itself a mutation inside the subtree the
+      // popover's own MutationObserver watches - confirmed live that
+      // without pausing it first, that write re-triggers the observer,
+      // which calls back in here again, forever (an infinite add/remove
+      // loop on the marker). Disconnect for the duration of the writes,
+      // then resume watching once they're done.
+      var observer = popoverObservers.get(popover);
+      if (observer) observer.disconnect();
+
       for (var i = 0; i < select.options.length; i++) {
         var opt = select.options[i];
-        if (!opt.hasAttribute(ORIGINAL_TEXT_ATTR)) {
-          opt.setAttribute(ORIGINAL_TEXT_ATTR, opt.text);
-        }
-        var original = opt.getAttribute(ORIGINAL_TEXT_ATTR);
+        // Confirmed live: selecting a different option in this dropdown
+        // causes the CMS to rebuild these <option> elements, discarding
+        // any attribute set on them (including a stored "original text"
+        // tracking attribute). Deriving the clean label by stripping a
+        // leading marker instead of relying on stored state makes this
+        // idempotent and immune to that rebuild - no state to lose.
+        var original = opt.text.charAt(0) === BULLET ? opt.text.slice(BULLET.length) : opt.text;
         var index = parseInt(opt.value, 10);
         var desired = (hasCssByIndex[index] ? BULLET : "") + original;
         // Only touch the DOM when the label actually needs to change - the
@@ -134,12 +152,9 @@
         // elsewhere in this same popover.
         if (opt.text !== desired) opt.text = desired;
       }
-    });
-  }
 
-  function scheduleRefresh(popover) {
-    clearTimeout(scanTimer);
-    scanTimer = setTimeout(function() { refreshBadges(popover); }, 80);
+      if (observer) observer.observe(popover, POPOVER_OBSERVER_OPTIONS);
+    });
   }
 
   // Watch only this one popover (not the whole document) for the
@@ -152,16 +167,19 @@
     if (popover.hasAttribute("data-cp-observer-bound") || !window.MutationObserver) return;
     popover.setAttribute("data-cp-observer-bound", "true");
 
+    // Calls the full enhance cycle, not just refreshBadges - confirmed
+    // live that selecting a different option rebuilds the <option>
+    // elements, which also strips the "already bound" marker used to
+    // avoid re-attaching the select's own "change" listener. Re-running
+    // enhancePopover on every mutation re-attaches that listener whenever
+    // it's found missing, instead of only ever binding it once.
     var popoverObserver = new MutationObserver(function() {
-      scheduleRefresh(popover);
+      clearTimeout(scanTimer);
+      scanTimer = setTimeout(function() { enhancePopover(popover); }, 80);
     });
 
-    popoverObserver.observe(popover, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["style", "class"]
-    });
+    popoverObservers.set(popover, popoverObserver);
+    popoverObserver.observe(popover, POPOVER_OBSERVER_OPTIONS);
   }
 
   function enhancePopover(popover) {
