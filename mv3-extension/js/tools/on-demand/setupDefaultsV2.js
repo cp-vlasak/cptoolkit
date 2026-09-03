@@ -625,8 +625,10 @@ height: 0;`,
       ...getSpacingValues("Padding", [null, null, 2, null])
     });
 
-    /* Header */
+    /* Header — ss[3] (Subhead 1/h2) styling, keeping this skin's own
+       margin override (spread after ss[3] so it wins per-key) */
     skin.Components[1] = copyStyles(skin.Components[1], {
+      ...ss[3],
       ...getSpacingValues("Margin", [null, null, .5, null])
     });
 
@@ -634,6 +636,9 @@ height: 0;`,
     skin.Components[3] = copyStyles(skin.Components[3], {
       ...getSpacingValues("Padding", [.25, null, .75, null])
     });
+
+    /* Item Title — ss[4] (Subhead 2/h3) styling */
+    skin.Components[4] = copyStyles(skin.Components[4], ss[4]);
 
     /* View All */
     skin.Components[9] = copyStyles(skin.Components[9], viewAllStyles);
