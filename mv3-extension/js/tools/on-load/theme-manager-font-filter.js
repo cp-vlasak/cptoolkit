@@ -93,7 +93,7 @@
     var style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-#${CONTROL_ID}{display:flex;align-items:center;gap:8px;margin:0;padding:10px 16px;border-bottom:1px solid #d5ddeb;background:#f7f9fc;font-family:"Segoe UI",Arial,sans-serif}
+#${CONTROL_ID}{display:inline-flex;align-items:center;gap:8px;margin:10px 16px;padding:6px 10px;border:1px solid #d5ddeb;border-radius:8px;background:#f7f9fc;font-family:"Segoe UI",Arial,sans-serif}
 #${CONTROL_ID} label{margin:0;color:#1c2f4c;font-size:12px;font-weight:600}
 #${CONTROL_ID} input[type="text"]{height:28px;min-width:200px;border:1px solid #b8c5d8;border-radius:6px;padding:0 10px;font-size:12px;color:#1c2f4c;background:#fff}
 #${CONTROL_ID} button{height:28px;line-height:1;border:1px solid #b8c5d8;border-radius:6px;background:#fff;color:#334d73;font-size:12px;padding:0 10px;cursor:pointer}
