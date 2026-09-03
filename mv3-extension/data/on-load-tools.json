@@ -176,6 +176,13 @@
     "version-introduced": "1.1.7",
     "help-text": "On /DesignCenter/Themes/Index, opening Actions > Manage Fonts adds a filter box below the modal title that narrows the currently active tab's font list (Web Fonts or Standard Fonts) as you type. Also shortens the 'Sort Alphabetically' button label to 'Sort A-Z' and reduces its size so it fits alongside the filter box."
   },
+  "widget-skin-custom-css-indicator": {
+    "name": "Widget Skin Custom CSS Indicator",
+    "description": "Marks which components of a widget skin have custom CSS in the Advanced tab with a small red marker in the component dropdown.",
+    "enabled-by-default": true,
+    "version-introduced": "1.1.8",
+    "help-text": "On /DesignCenter/Themes/Index, opening a widget skin's editor prefixes a small red triangle (🔻) onto any component in the Advanced tab's dropdown (Wrapper, Header, Item, etc.) that already has custom CSS entered, so you can tell at a glance which levels have overrides without clicking through each one."
+  },
   "title-changer": {
     "name": "Title Changer",
     "description": "Add the current page's title to the tab title.",
