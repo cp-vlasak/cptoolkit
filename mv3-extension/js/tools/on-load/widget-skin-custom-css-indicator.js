@@ -74,50 +74,19 @@
     return popovers;
   }
 
-  // Every widget-type view onto the Components array starts at a fixed
-  // base index (per copied-skins-helper.js's COMPONENT_TYPES map):
-  //   0  = items view    (Wrapper..Footer, 12 slots)
-  //   12 = tabbed view    (Tab List, Tab, Tab Panel)
-  //   15 = columns view   (Column Separator)
-  //   16 = calendar view  (Calendar Header..Cal Wrapper, up to 8 slots)
-  // Labels vary by widget type ("Wrapper" vs "Calendar Wrapper" vs "Tab
-  // List" as the first option), so matching on label text means chasing
-  // every widget type one at a time. The option VALUES don't vary: they're
-  // always a consecutive run of integers anchored at one of these four
-  // bases, regardless of what the labels say - so match on that instead.
-  var VIEW_BASE_INDICES = [0, 12, 15, 16];
-
+  // Confirmed live: the component-picker select's id is always
+  // "widgetSkinComponentTypeID" (see the popover header markup: <h3><span
+  // id="widgetSkinName"></span> <span id="arrow"></span>
+  // <select id="widgetSkinComponentTypeID">...). A structural heuristic
+  // (matching consecutive integer option values) was tried first, but it
+  // produced a false positive: some widget types also show an unrelated
+  // small enum dropdown (e.g. a scroll direction picker with values
+  // "0","1","2","3") that happened to have more options than the real
+  // 3-option Tab List/Tab/Tab Panel select, so the "prefer more options"
+  // tiebreaker silently picked the wrong select. The stable id sidesteps
+  // that guesswork entirely.
   function getComponentSelect(popover) {
-    var selects = popover.querySelectorAll("select");
-    var best = null;
-    for (var i = 0; i < selects.length; i++) {
-      var opts = selects[i].options;
-      if (!opts.length) continue;
-
-      var values = [];
-      var allInts = true;
-      for (var j = 0; j < opts.length; j++) {
-        if (!/^\d+$/.test(opts[j].value)) { allInts = false; break; }
-        values.push(parseInt(opts[j].value, 10));
-      }
-      if (!allInts) continue;
-
-      // Some widget types display their options out of index order (a
-      // calendar widget shows "Calendar Wrapper" first even though its
-      // real index, 23, is the highest in the set) - sort before checking
-      // consecutiveness so display order never matters, only the set of
-      // values actually present.
-      var sorted = values.slice().sort(function(a, b) { return a - b; });
-      var consecutive = sorted.every(function(v, idx) { return idx === 0 || v === sorted[idx - 1] + 1; });
-      if (!consecutive) continue;
-      if (VIEW_BASE_INDICES.indexOf(sorted[0]) === -1) continue;
-
-      // Prefer the candidate with the most options if more than one
-      // matches (a small unrelated enum dropdown could coincidentally
-      // start at 0 too, but the real component picker has more entries).
-      if (!best || opts.length > best.options.length) best = selects[i];
-    }
-    return best;
+    return popover.querySelector("#widgetSkinComponentTypeID");
   }
 
   function refreshBadges(popover) {
