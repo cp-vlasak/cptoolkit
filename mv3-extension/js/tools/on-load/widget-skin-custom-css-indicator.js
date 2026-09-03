@@ -8,10 +8,52 @@
   var observer = null;
   var scanTimer = null;
   var typingTimer = null;
+  var nextRequestId = 1;
+  var pendingCssMapRequests = {};
 
   function isThemesPage() {
     var path = String(window.location.pathname || "").toLowerCase();
     return path.indexOf("/designcenter/themes") !== -1;
+  }
+
+  // DesignCenter.themeJSON only exists in the page's own MAIN world; this
+  // isolated-world script can never see it directly (that's the whole
+  // point of world isolation). Load a small MAIN-world helper (same
+  // pattern as widget-skin-advanced-style-helper.js) that reads it on
+  // request and relays the answer back via a CustomEvent, which does
+  // cross the isolated/main boundary.
+  function injectPageHelper() {
+    if (document.getElementById("cp-toolkit-skin-css-reader-script")) return;
+    var s = document.createElement("script");
+    s.id = "cp-toolkit-skin-css-reader-script";
+    s.src = chrome.runtime.getURL("js/tools/on-load/helpers/widget-skin-custom-css-reader.js");
+    (document.head || document.documentElement).appendChild(s);
+  }
+
+  document.addEventListener("cp-toolkit-skin-css-map-response", function(e) {
+    var detail = e.detail || {};
+    var resolve = pendingCssMapRequests[detail.requestId];
+    if (resolve) {
+      delete pendingCssMapRequests[detail.requestId];
+      resolve(detail.hasCssByIndex || {});
+    }
+  });
+
+  function requestSkinCssMap(skinId) {
+    return new Promise(function(resolve) {
+      var requestId = "req" + (nextRequestId++);
+      pendingCssMapRequests[requestId] = resolve;
+      document.dispatchEvent(new CustomEvent("cp-toolkit-request-skin-css-map", {
+        detail: { skinId: skinId, requestId: requestId }
+      }));
+      // Safety timeout in case the MAIN-world helper hasn't loaded yet.
+      setTimeout(function() {
+        if (pendingCssMapRequests[requestId]) {
+          delete pendingCssMapRequests[requestId];
+          resolve({});
+        }
+      }, 500);
+    });
   }
 
   // The "Edit Widget Skin" popover always carries a hidden #hdnSkinID input;
@@ -40,44 +82,22 @@
     return String(value || "").replace(/\s+/g, " ").trim();
   }
 
-  function hasCustomStyles(skin, index) {
-    var component = skin.Components && skin.Components[index];
-    if (!component) return false;
-    var css = component.MiscellaneousStyles;
-    return typeof css === "string" && css.trim().length > 0;
-  }
-
   function refreshBadges(popover) {
-    if (typeof DesignCenter === "undefined" || !DesignCenter.themeJSON) {
-      console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: DesignCenter.themeJSON not ready yet");
-      return;
-    }
-
     var hdnSkinID = popover.querySelector("#hdnSkinID");
     var select = getComponentSelect(popover);
-    if (!hdnSkinID || !select) {
-      console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: hdnSkinID=" + !!hdnSkinID + " select=" + !!select);
-      return;
-    }
+    if (!hdnSkinID || !select) return;
 
-    var skin = DesignCenter.themeJSON.WidgetSkins.find(function(s) {
-      return String(s.WidgetSkinID) === String(hdnSkinID.value);
-    });
-    if (!skin) {
-      console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: no skin found for WidgetSkinID=" + hdnSkinID.value);
-      return;
-    }
-
-    console.log("[CP Toolkit](widget-skin-custom-css-indicator) refreshBadges: applying badges for skin '" + skin.Name + "' (" + select.options.length + " options)");
-    for (var i = 0; i < select.options.length; i++) {
-      var opt = select.options[i];
-      if (!opt.hasAttribute(ORIGINAL_TEXT_ATTR)) {
-        opt.setAttribute(ORIGINAL_TEXT_ATTR, opt.text);
+    requestSkinCssMap(hdnSkinID.value).then(function(hasCssByIndex) {
+      for (var i = 0; i < select.options.length; i++) {
+        var opt = select.options[i];
+        if (!opt.hasAttribute(ORIGINAL_TEXT_ATTR)) {
+          opt.setAttribute(ORIGINAL_TEXT_ATTR, opt.text);
+        }
+        var original = opt.getAttribute(ORIGINAL_TEXT_ATTR);
+        var index = parseInt(opt.value, 10);
+        opt.text = (hasCssByIndex[index] ? BULLET : "") + original;
       }
-      var original = opt.getAttribute(ORIGINAL_TEXT_ATTR);
-      var index = parseInt(opt.value, 10);
-      opt.text = (hasCustomStyles(skin, index) ? BULLET : "") + original;
-    }
+    });
   }
 
   function enhancePopover(popover) {
@@ -107,7 +127,6 @@
 
   function scanAndEnhance() {
     var popovers = getSkinEditorPopovers();
-    console.log("[CP Toolkit](widget-skin-custom-css-indicator) scanAndEnhance: found " + popovers.length + " popover(s)");
     for (var i = 0; i < popovers.length; i++) enhancePopover(popovers[i]);
   }
 
@@ -117,10 +136,7 @@
   }
 
   function bindObservers() {
-    if (observer || !window.MutationObserver || !document.body) {
-      console.log("[CP Toolkit](widget-skin-custom-css-indicator) bindObservers: skipped (observer=" + !!observer + " MutationObserver=" + !!window.MutationObserver + " body=" + !!document.body + ")");
-      return;
-    }
+    if (observer || !window.MutationObserver || !document.body) return;
 
     // The skin editor popover is a persistent DOM node that toggles
     // visibility via its own inline "style" (display: none/block) rather
@@ -144,13 +160,13 @@
       attributes: true,
       attributeFilter: ["style", "class"]
     });
-    console.log("[CP Toolkit](widget-skin-custom-css-indicator) bindObservers: observer attached");
   }
 
   function init() {
     if (initialized) return;
     initialized = true;
 
+    injectPageHelper();
     scanAndEnhance();
     bindObservers();
     console.log("[CP Toolkit] Loaded " + thisTool);
@@ -164,10 +180,7 @@
 
     detect_if_cp_site(function() {
       if (window.top !== window.self) return;
-      if (settings[thisTool] === false || !isThemesPage()) {
-        console.log("[CP Toolkit](widget-skin-custom-css-indicator) init skipped: settingOff=" + (settings[thisTool] === false) + " isThemesPage=" + isThemesPage() + " path=" + window.location.pathname);
-        return;
-      }
+      if (settings[thisTool] === false || !isThemesPage()) return;
 
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);

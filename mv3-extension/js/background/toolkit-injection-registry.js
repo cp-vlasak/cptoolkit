@@ -190,7 +190,8 @@
       frameTarget: FRAME_TARGETS.TOP,
       world: WORLDS.ISOLATED,
       jquery: JQUERY.OPTIONAL,
-      timingRisk: TIMING_RISK.LOW
+      timingRisk: TIMING_RISK.LOW,
+      notes: ['Injects MAIN-world helper file (widget-skin-custom-css-reader.js) to read DesignCenter.themeJSON; preserve helper relay.']
     },
     {
       id: 'widget-skin-default-override',
