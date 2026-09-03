@@ -35,8 +35,9 @@ Use a separate local folder only when you intentionally need two unpacked versio
 - Widget Skin Custom CSS Indicator (🔻 marker on components with custom
   CSS in a widget skin's Advanced tab dropdown):
   - `js/tools/on-load/widget-skin-custom-css-indicator.js`
+  - `js/tools/on-load/helpers/widget-skin-custom-css-reader.js`
 
-See `docs/snippet-skin-and-button-libraries.md` for data contracts, workflows, and maintenance notes for these libraries. See `docs/graphic-link-fancy-button-selector-copy.md` for the Advanced Style Helper's DOM discoveries and event-delegation design.
+See `docs/snippet-skin-and-button-libraries.md` for data contracts, workflows, and maintenance notes for these libraries. See `docs/graphic-link-fancy-button-selector-copy.md` for the Advanced Style Helper's DOM discoveries and event-delegation design. See `docs/widget-skin-custom-css-indicator.md` for the Custom CSS Indicator's pitfalls (MAIN-world data access, the widget skin editor's option-rebuild-on-select behavior, and how it avoids interfering with mini-ide.js's Advanced-tab editor upgrade) — check it first if a future change causes widget skin or Advanced tab regressions.
 
 ## Validation
 
