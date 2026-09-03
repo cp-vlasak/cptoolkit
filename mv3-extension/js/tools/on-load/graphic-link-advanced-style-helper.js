@@ -244,17 +244,6 @@
       return null;
     }
 
-    // Each Text Style now has its own container, so the base could be baked
-    // in at injection time — but reading it fresh from the dropdown at click
-    // time is still correct and is a cheap extra safety net.
-    function getCurrentSelectorBase() {
-      const modal = getVisibleFancyButtonModal();
-      const tabSelect = modal ? modal.querySelector('select#selectedTab') : null;
-      const containerId = tabSelect ? (tabSelect.value || '').replace(/^#/, '') : '';
-      const base = getSelectorBaseForContainerId(containerId);
-      return base === null ? '' : base;
-    }
-
     function buildSelectorCopySnippet(buttonId, base, isHover) {
       const state = isHover ? ':is(:hover, :focus, :active)' : '';
       let snippet = '.fancyButton1' + state + base;
@@ -283,7 +272,7 @@
       document.body.removeChild(scratch);
     }
 
-    function makeSelectorCopyButton(isHover) {
+    function makeSelectorCopyButton(base, isHover) {
       const wrapper = document.createElement('span');
       wrapper.className = 'cpSelectorCopyBtn';
       wrapper.style.cssText = 'position:relative !important;display:inline-flex !important;' +
@@ -305,7 +294,7 @@
       const tooltip = document.createElement('span');
       tooltip.textContent = 'Copy a starting selector for a new rule at this level';
       tooltip.style.cssText = 'position:absolute !important;top:130% !important;' +
-        'left:50% !important;transform:translateX(-50%) !important;' +
+        'left:0 !important;' +
         'background:#1f2d3a !important;color:#fff !important;padding:5px 9px !important;' +
         'border-radius:4px !important;font-size:11px !important;line-height:1.3 !important;' +
         'white-space:nowrap !important;display:none !important;z-index:10000 !important;' +
@@ -319,7 +308,6 @@
         e.preventDefault();
         e.stopPropagation();
         const buttonId = getFancyButtonId();
-        const base = getCurrentSelectorBase();
         const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
         copySelectorSnippetToClipboard(snippet);
         const originalTooltipText = tooltip.textContent;
@@ -339,15 +327,23 @@
       const tabSelect = modal.querySelector('select#selectedTab');
       if (!tabSelect) return;
 
-      const miscContainerIds = new Set();
+      // Map, not Set: each Misc container now maps 1:1 to a specific level,
+      // so the correct base class can be baked in once, from the DOM
+      // structure itself, rather than re-read from the dropdown at click
+      // time (which proved unreliable immediately after adding a new Text
+      // Style, before the dropdown's own value settles).
+      const miscToBase = new Map();
       tabSelect.querySelectorAll('option').forEach(opt => {
         const containerId = (opt.value || '').replace(/^#/, '');
         if (!containerId) return;
         const miscId = getMiscContainerId(containerId);
-        if (miscId) miscContainerIds.add(miscId);
+        const base = getSelectorBaseForContainerId(containerId);
+        if (miscId && base !== null && !miscToBase.has(miscId)) {
+          miscToBase.set(miscId, base);
+        }
       });
 
-      miscContainerIds.forEach(miscId => {
+      miscToBase.forEach((base, miscId) => {
         const container = modal.querySelector('#' + miscId);
         if (!container) return;
 
@@ -373,7 +369,7 @@
           // toggle still works when the header text itself is clicked.
           if (header.parentElement.querySelector('.cpSelectorCopyBtn')) return;
           header.style.setProperty('display', 'inline-block', 'important');
-          header.insertAdjacentElement('beforebegin', makeSelectorCopyButton(isHover));
+          header.insertAdjacentElement('beforebegin', makeSelectorCopyButton(base, isHover));
         });
       });
     }
