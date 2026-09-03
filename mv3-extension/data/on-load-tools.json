@@ -96,7 +96,7 @@
     "description": "Makes writing advanced styles for graphic links easier.",
     "enabled-by-default": true,
     "version-introduced": "1.2.4",
-    "help-text": "This tool will replace any selector for a Graphic Link in its advanced styles with the correct selector."
+    "help-text": "This tool replaces any selector for a Graphic Link in its advanced styles with the correct selector, shows a pill badge with the Fancy Button's real numeric ID next to the Fancy Button Builder title, and adds a small copy-selector button next to each Advanced Styles selector (Background outer/inner, Default Text Style, and every added Text Style) that copies a ready-to-paste starting selector — including both the placeholder and real button ID — for the level and Normal/Hover state you're currently viewing."
   },
   "graphic-link-autofill": {
     "name": "Graphic Link Autofill",
