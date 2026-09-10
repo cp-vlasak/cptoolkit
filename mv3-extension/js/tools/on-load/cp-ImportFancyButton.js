@@ -12,6 +12,12 @@
         var darkBgToggles = {};
         var socialIcons = null;
         var buttonLibraryUtils = window.CPToolkitFancyButtonLibrary;
+        var PENDING_FB_FIX_KEY = "cp-toolkit-pending-fb-fix";
+
+        // If a fancy-button import just completed and reloaded this page to
+        // get a fully-rendered listing to diff against (see importFancyButton
+        // below), finish that ID fix now against the live DOM.
+        finishPendingFancyButtonFix();
 
         // Resolve ext: prefixed URLs in savedImages to full chrome-extension:// URLs
         function resolveExtUrls(templates) {
@@ -287,7 +293,8 @@
           //   fancyButtonNormalText*   — general / .cpTS1 (single-text buttons)
           //   fancyButton1NormalText*  — .textStyle1 overrides
           //   fancyButton2NormalText*  — .textStyle2 overrides
-          function buildTextCSS(normalPre, hoverPre) {
+          function buildTextCSS(normalPre, hoverPre, includeMisc) {
+            if (includeMisc === undefined) includeMisc = true;
             var n = "";
             var h = "";
             if (v(normalPre + "Color"))
@@ -319,8 +326,18 @@
                 tsc +
                 ";";
             }
-            // Misc styles — resolve saved image URLs
-            if (v(normalPre + "MiscStyles"))
+            // Misc styles — resolve saved image URLs. Skipped when
+            // includeMisc is false (the base ts1/general-text call): that
+            // field is the same "fancyButton{Normal,Hover}TextMiscStyles"
+            // key textN/textH already read for the .cpText rule below, and
+            // it commonly contains a selector-breaking fragment (raw CSS
+            // that closes the current rule and opens ".text{...}" or
+            // ".fancyButtonN .text{...}"). Reading it a second time here,
+            // inside the .cpFB assembly, would let that break-out fragment
+            // hijack .cpFB's own rule and strand whatever CSS follows it
+            // (e.g. the outer/icon background) inside the reopened .text
+            // selector instead.
+            if (includeMisc && v(normalPre + "MiscStyles"))
               n += resolveCssUrls(
                 v(normalPre + "MiscStyles").replace(/\n/g, ""),
               );
@@ -333,17 +350,20 @@
               h += "text-decoration:underline;";
             else if (v(hoverPre + "Underline") === "False")
               h += "text-decoration:none;";
-            if (v(hoverPre + "MiscStyles"))
+            if (includeMisc && v(hoverPre + "MiscStyles"))
               h += resolveCssUrls(
                 v(hoverPre + "MiscStyles").replace(/\n/g, ""),
               );
             return { normal: n, hover: h };
           }
 
-          // General text styles (fancyButtonNormalText*) — applied to .cpFB
+          // General text styles (fancyButtonNormalText*) — applied to .cpFB.
+          // includeMisc:false - textN/textH (below) already own
+          // fancyButton{Normal,Hover}TextMiscStyles for the .cpText rule.
           var ts1 = buildTextCSS(
             "fancyButtonNormalText",
             "fancyButtonHoverText",
+            false,
           );
 
           // Dynamically detect all textStyle numbers from style keys
@@ -436,6 +456,30 @@
           css = css.replace(/\.fancyButton\d+/g, scopedFB);
           // Rewrite .text references to .cpText (CMS inner element)
           css = css.replace(/\.text(?=[^S\w-])/g, ".cpText");
+
+          // A button's real Advanced Styles legitimately contain the
+          // portable dual-selector pattern ".fancyButton1 X, .fancyButtonN X"
+          // (placeholder + real id, so it works both in the builder's own
+          // preview and on the live page). The blind replace above doesn't
+          // distinguish placeholder from real id, so both collapse to the
+          // same scoped class, turning what was two meaningfully different
+          // selectors live into one literal duplicate here. Dedupe each
+          // rule's selector list (never touches declaration bodies, since
+          // this only matches text before an opening brace).
+          css = css.replace(/([^{}]+)\{/g, function (match, selectorList) {
+            var seen = {};
+            var deduped = selectorList
+              .split(",")
+              .map(function (part) {
+                return part.trim();
+              })
+              .filter(function (part) {
+                if (!part || seen[part]) return false;
+                seen[part] = true;
+                return true;
+              });
+            return deduped.join(", ") + "{";
+          });
 
           // ── Assemble HTML ──
           var buttonText = template.buttonText || "Button";
@@ -2897,32 +2941,219 @@
             document.getElementsByName("intQLCategoryID")[0];
           var categoryID = categoryElement ? categoryElement.value : "0";
 
-          // Reset graphicLinkID to 0 so API creates a new item (not update)
-          var updatedData = data.replace(
-            /"graphicLinkID"\s*:\s*("\d+"|\d+)/,
-            '"graphicLinkID": "0"',
-          );
-          // Update categoryID to current page category
-          updatedData = updatedData.replace(
-            /"categoryID"\s*:\s*("\d+"|\d+)/,
-            '"categoryID": "' + categoryID + '"',
-          );
+          var payload;
+          try {
+            payload = JSON.parse(data);
+          } catch (err) {
+            payload = null;
+          }
+          if (!payload) {
+            var overlay0 = document.getElementById("toolkit-block");
+            if (overlay0) overlay0.remove();
+            alert("Error importing: invalid button data.");
+            return;
+          }
 
+          // Capture the ID this button had when it was saved to the library
+          // (or 0/none for a built-in template that was never a real button)
+          // before resetting it - this is the ID any .fancyButtonN selectors
+          // baked into its Advanced Styles text are still pointing at.
+          var oldGraphicLinkID = String(payload.graphicLinkID || "0");
+
+          // Reset graphicLinkID to 0 so API creates a new item (not update)
+          payload.graphicLinkID = "0";
+          // Update categoryID to current page category
+          payload.categoryID = categoryID;
+
+          // GraphicLinkSave returns no response body, so the only way to
+          // learn the ID the CMS assigns to the new record is to look at
+          // the admin listing afterward. Confirmed live: a newly saved
+          // graphic link always lands as the last <tr data-item="dragdrop"
+          // id="..."> row in this listing - so a real page reload (the same
+          // thing manually reopening and resaving the button already does
+          // successfully) followed by reading the last such row is
+          // reliable, unlike diffing a background fetch() of the raw HTML
+          // (which isn't guaranteed to reflect a filtered/paged view, and
+          // testing live showed it never found the new row at all).
           $.ajax({
             type: "POST",
             url: "/GraphicLinks/GraphicLinkSave",
-            data: updatedData,
+            data: JSON.stringify(payload),
             contentType: "application/json",
           })
             .done(function () {
-              var overlay = document.getElementById("toolkit-block");
-              if (overlay) overlay.remove();
-              location.reload();
+              try {
+                sessionStorage.setItem(
+                  PENDING_FB_FIX_KEY,
+                  JSON.stringify({
+                    payload: payload,
+                    oldGraphicLinkID: oldGraphicLinkID,
+                  }),
+                );
+              } catch (err) {
+                // sessionStorage unavailable - proceed without the fix.
+              }
+              reloadAfterFancyButtonImport();
             })
             .fail(function (xhr, status, error) {
               var overlay = document.getElementById("toolkit-block");
               if (overlay) overlay.remove();
               alert("Error importing: " + error);
+            });
+        }
+
+        function getLastListedGraphicLinkID(scope) {
+          var rows = scope.querySelectorAll('tr[data-item="dragdrop"][id]');
+          for (var i = rows.length - 1; i >= 0; i--) {
+            if (/^\d+$/.test(rows[i].id)) return rows[i].id;
+          }
+          return null;
+        }
+
+        function reloadAfterFancyButtonImport() {
+          var overlay = document.getElementById("toolkit-block");
+          if (overlay) overlay.remove();
+          location.reload();
+        }
+
+        // Runs once, right after a reload triggered by importFancyButton's
+        // save handler. Reads the last row in the now fully-loaded listing
+        // (confirmed live: a newly saved graphic link always lands there)
+        // to learn the new button's real ID, then fixes up its
+        // .fancyButtonN selectors.
+        function finishPendingFancyButtonFix() {
+          var raw;
+          try {
+            raw = sessionStorage.getItem(PENDING_FB_FIX_KEY);
+            sessionStorage.removeItem(PENDING_FB_FIX_KEY);
+          } catch (err) {
+            return;
+          }
+          if (!raw) return;
+
+          var pending;
+          try {
+            pending = JSON.parse(raw);
+          } catch (err) {
+            return;
+          }
+          if (!pending || !pending.payload) return;
+
+          var newId = getLastListedGraphicLinkID(document);
+
+          if (!newId || newId === pending.oldGraphicLinkID) {
+            console.warn(
+              "[CP Toolkit] Could not identify the newly created graphic link - this button's Advanced Styles were left as-is.",
+            );
+            return;
+          }
+
+          applyFancyButtonSelectorFix(
+            pending.payload,
+            pending.oldGraphicLinkID,
+            newId,
+          );
+        }
+
+        function applyFancyButtonSelectorFix(payload, oldId, newId) {
+          // ".fancyButton1" is a permanent, reserved placeholder class the
+          // CMS's own Fancy Button Builder always renders the button being
+          // edited with in its live preview, regardless of that button's
+          // real ID - it must never be rewritten or removed, or Advanced
+          // Styles stop previewing correctly in the builder. It is never
+          // treated as "the old real ID" below, even in the (real but rare)
+          // case where a button's actual ID genuinely is 1.
+          var changed = false;
+
+          if (oldId && oldId !== "0" && oldId !== "1") {
+            // A genuine previous real ID exists (this button was saved
+            // live before, then re-imported) - same rewrite this toolkit
+            // already does for widget skins in copied-skins-helper.js's
+            // applySkin action: swap the literal old-ID selector for the
+            // new one everywhere it appears. The negative lookahead keeps
+            // ".fancyButton1" from matching inside ".fancyButton15".
+            // Built fresh inside the loop rather than reused across
+            // iterations: a global regex's lastIndex persists between
+            // calls, and calling .test() then .replace() on the same
+            // shared object across multiple strings can make .test()
+            // false-negative on a later entry once lastIndex has advanced
+            // past that entry's own match position. Comparing the
+            // .replace() output to the original avoids needing .test() at
+            // all - .replace() itself always resets lastIndex to 0 first.
+            (payload.styles || []).forEach(function (style) {
+              if (typeof style.Value !== "string") return;
+              var oldPattern = new RegExp(
+                "\\.fancyButton" + oldId + "(?![0-9])",
+                "g",
+              );
+              var next = style.Value.replace(
+                oldPattern,
+                ".fancyButton" + newId,
+              );
+              if (next !== style.Value) {
+                style.Value = next;
+                changed = true;
+              }
+            });
+          } else {
+            // No previous real ID (a built-in template authored purely in
+            // the builder and never saved as a real button) - any
+            // ".fancyButton1" selector only ever matched inside the
+            // builder's own preview, not on the live page, so add the new
+            // real ID alongside it rather than replacing it. Confirmed live
+            // that a real saved button's own Advanced Styles look exactly
+            // like this once fixed up: ".fancyButton1 X, .fancyButton1556 X".
+            // Must duplicate the WHOLE compound selector following
+            // ".fancyButton1" (e.g. " .textStyle1", ":hover .text"), not
+            // just the class token - inserting ", .fancyButtonNNN" right
+            // after the bare token would otherwise leave ".fancyButton1"
+            // as its own standalone (too-broad) selector while only the
+            // new id gets the actual descendant part, since CSS doesn't
+            // distribute a trailing selector across comma-separated
+            // alternatives. Same reasoning as above: build the global
+            // regex fresh per string instead of reusing one across the loop.
+            (payload.styles || []).forEach(function (style) {
+              if (typeof style.Value !== "string") return;
+              var placeholderPattern = /\.fancyButton1(?![0-9])([^,{}]*)/g;
+              var next = style.Value.replace(
+                placeholderPattern,
+                function (match, tail) {
+                  return (
+                    ".fancyButton1" + tail + ", .fancyButton" + newId + tail
+                  );
+                },
+              );
+              if (next !== style.Value) {
+                style.Value = next;
+                changed = true;
+              }
+            });
+          }
+
+          if (!changed) {
+            reloadAfterFancyButtonImport();
+            return;
+          }
+
+          payload.graphicLinkID = newId;
+
+          $.ajax({
+            type: "POST",
+            url: "/GraphicLinks/GraphicLinkSave",
+            data: JSON.stringify(payload),
+            contentType: "application/json",
+          })
+            .done(reloadAfterFancyButtonImport)
+            .fail(function (xhr, status, error) {
+              console.warn(
+                "[CP Toolkit] Created graphic link " +
+                  newId +
+                  " but failed to fix its .fancyButton" +
+                  oldId +
+                  " selectors:",
+                error,
+              );
+              reloadAfterFancyButtonImport();
             });
         }
 

@@ -309,16 +309,25 @@
     normalized.version = source.version || "1.1";
     normalized.componentIndexes = Array.isArray(source.componentIndexes) ? source.componentIndexes.slice() : [];
     normalized.components = Array.isArray(source.components) ? source.components.slice() : [];
+    normalized.isUserSkin = source.isUserSkin === false ? false : true;
 
     return normalized;
   }
 
-  function normalizeSkinCollection(rawSkins) {
+  // options.forceUserSkin defaults true (used for user storage / exports, where
+  // everything should be treated as a personal skin). Pass { forceUserSkin: false }
+  // when normalizing bundled defaults so an explicit isUserSkin:false is preserved.
+  function normalizeSkinCollection(rawSkins, options) {
     var source = isPlainObject(rawSkins) ? rawSkins : {};
     var normalized = {};
+    var forceUserSkin = !options || options.forceUserSkin !== false;
 
     Object.keys(source).forEach(function(key) {
-      normalized[key] = normalizeSavedSkin(source[key], key);
+      var skin = normalizeSavedSkin(source[key], key);
+      if (!forceUserSkin && source[key] && source[key].isUserSkin === false) {
+        skin.isUserSkin = false;
+      }
+      normalized[key] = skin;
     });
 
     return normalized;
@@ -366,6 +375,10 @@
       delete snippets[key].isUserSnippet;
     });
 
+    Object.keys(skins).forEach(function(key) {
+      delete skins[key].isUserSkin;
+    });
+
     return {
       version: EXPORT_VERSION,
       exportedAt: new Date().toISOString(),
@@ -384,14 +397,59 @@
     return storageSet(USER_SNIPPETS_KEY, normalizeSnippetCollection(snippets || {}));
   }
 
+  function fetchBuiltInSkins() {
+    if (!root.chrome || !root.chrome.runtime || !chrome.runtime.getURL) {
+      return Promise.resolve({});
+    }
+
+    var url;
+    try {
+      url = chrome.runtime.getURL("data/saved-skins.json");
+    } catch (e) {
+      return Promise.resolve({});
+    }
+
+    return fetch(url).then(function(response) {
+      if (!response.ok) throw new Error("Failed to load saved-skins.json");
+      return response.json();
+    }).catch(function(err) {
+      console.warn("[CP Toolkit](snippet-library-store) Failed to load bundled saved skins:", err);
+      return {};
+    });
+  }
+
   function loadCopiedSkins() {
-    return storageGet(COPIED_SKINS_KEY).then(function(raw) {
-      return normalizeSkinCollection(raw || {});
+    return Promise.all([fetchBuiltInSkins(), storageGet(COPIED_SKINS_KEY)]).then(function(results) {
+      var builtInSkins = normalizeSkinCollection(results[0] || {}, { forceUserSkin: false });
+      Object.keys(builtInSkins).forEach(function(key) {
+        builtInSkins[key].isUserSkin = false;
+      });
+
+      var userSkins = normalizeSkinCollection(results[1] || {});
+
+      var merged = {};
+      Object.keys(builtInSkins).forEach(function(key) { merged[key] = builtInSkins[key]; });
+      Object.keys(userSkins).forEach(function(key) { merged[key] = userSkins[key]; });
+
+      return merged;
     });
   }
 
   function saveCopiedSkins(skins) {
-    return storageSet(COPIED_SKINS_KEY, normalizeSkinCollection(skins || {}));
+    // Bundled defaults (isUserSkin:false) come back through here whenever a
+    // caller loads the merged collection, edits one key, and saves the whole
+    // thing. Only ever persist genuinely user-owned skins so defaults never
+    // get promoted into (and frozen inside) chrome.storage.local.
+    var normalized = normalizeSkinCollection(skins || {}, { forceUserSkin: false });
+    var userOnly = {};
+
+    Object.keys(normalized).forEach(function(key) {
+      if (normalized[key].isUserSkin !== false) {
+        userOnly[key] = normalized[key];
+      }
+    });
+
+    return storageSet(COPIED_SKINS_KEY, userOnly);
   }
 
   function loadSnippetOrder() {
