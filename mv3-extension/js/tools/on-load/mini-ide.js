@@ -177,20 +177,27 @@
     }
 
     function readPseudoModeFromStorage(callback) {
-        if (!chrome.storage || !chrome.storage.local) {
+        if (!chrome.storage || !chrome.storage.local || !chrome.runtime?.id) {
             callback(PSEUDO_MODE_DEFAULT);
             return;
         }
 
-        chrome.storage.local.get(PSEUDO_MODE_STORAGE_KEY, (settings) => {
-            if (chrome.runtime.lastError) {
-                console.warn(TOOLKIT_NAME + ' Failed to read pseudo mode:', chrome.runtime.lastError);
-                callback(PSEUDO_MODE_DEFAULT);
-                return;
-            }
+        try {
+            chrome.storage.local.get(PSEUDO_MODE_STORAGE_KEY, (settings) => {
+                if (chrome.runtime.lastError) {
+                    console.warn(TOOLKIT_NAME + ' Failed to read pseudo mode:', chrome.runtime.lastError);
+                    callback(PSEUDO_MODE_DEFAULT);
+                    return;
+                }
 
-            callback(sanitizePseudoMode(settings[PSEUDO_MODE_STORAGE_KEY]));
-        });
+                callback(sanitizePseudoMode(settings[PSEUDO_MODE_STORAGE_KEY]));
+            });
+        } catch (err) {
+            // Extension context invalidated (e.g. the extension was reloaded while
+            // this page's content script was still running) — fall back quietly.
+            console.warn(TOOLKIT_NAME + ' Extension context unavailable, using default pseudo mode:', err);
+            callback(PSEUDO_MODE_DEFAULT);
+        }
     }
 
     function initializePseudoToggle(button) {
@@ -223,11 +230,19 @@
             updateAllPseudoModeButtons(nextMode);
             settings[PSEUDO_MODE_STORAGE_KEY] = nextMode;
 
-            chrome.storage.local.set(settings, () => {
-                if (chrome.runtime.lastError) {
-                    console.warn(TOOLKIT_NAME + ' Failed to save pseudo mode:', chrome.runtime.lastError);
-                }
-            });
+            if (!chrome.runtime?.id) {
+                return;
+            }
+
+            try {
+                chrome.storage.local.set(settings, () => {
+                    if (chrome.runtime.lastError) {
+                        console.warn(TOOLKIT_NAME + ' Failed to save pseudo mode:', chrome.runtime.lastError);
+                    }
+                });
+            } catch (err) {
+                console.warn(TOOLKIT_NAME + ' Extension context unavailable, could not save pseudo mode:', err);
+            }
         };
 
         button.addEventListener('click', cyclePseudoMode);

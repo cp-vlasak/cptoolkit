@@ -400,8 +400,12 @@
 
   function saveSkins(callback) {
     if (libraryStore) {
+      // Reload (not re-normalize the passed-in object) so bundled defaults keep
+      // their isUserSkin:false tag instead of being force-flipped to user-owned.
       libraryStore.saveCopiedSkins(allSkins).then(function() {
-        allSkins = libraryStore.normalizeSkinCollection(allSkins || {});
+        return libraryStore.loadCopiedSkins();
+      }).then(function(skins) {
+        allSkins = skins;
         if (callback) callback();
       }).catch(function(err) {
         console.error('[CP Toolkit](snippets-page) Failed to save skins:', err);
@@ -559,7 +563,8 @@
     var componentCount = skin.components ? skin.components.length : 0;
     var sourceSite = skin.sourceSite || (skin.sourceUrl || '').replace(/^https?:\/\//, '');
     var savedDate = formatDate(skin.savedAt || skin.updatedAt);
-    var badges = '<span class="skin-badge">Skin</span>';
+    var isUserSkin = skin.isUserSkin !== false;
+    var badges = '<span class="skin-badge">' + (isUserSkin ? 'Skin' : 'Default') + '</span>';
     if (skin.category) {
       badges += '<span class="category-pill">' + escapeHtml(skin.category) + '</span>';
     }
@@ -571,7 +576,7 @@
         escapeHtml(skin.name || key) + badges +
       '</div>' +
       '<div class="snippet-card-actions">' +
-        '<button class="btn-delete" title="Delete">Delete</button>' +
+        (isUserSkin ? '<button class="btn-delete" title="Delete">Delete</button>' : '') +
       '</div>' +
       '<span class="snippet-card-chevron">' + chevronSVG + '</span>';
 
@@ -580,13 +585,16 @@
       card.classList.toggle('expanded');
     });
 
-    header.querySelector('.btn-delete').addEventListener('click', function(e) {
-      e.stopPropagation();
-      if (confirm('Delete saved skin "' + (skin.name || key) + '"?')) {
-        delete allSkins[key];
-        saveSkins(function() { renderSkins(); });
-      }
-    });
+    var deleteBtn = header.querySelector('.btn-delete');
+    if (deleteBtn) {
+      deleteBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (confirm('Delete saved skin "' + (skin.name || key) + '"?')) {
+          delete allSkins[key];
+          saveSkins(function() { renderSkins(); });
+        }
+      });
+    }
 
     card.appendChild(header);
 

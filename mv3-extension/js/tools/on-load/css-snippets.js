@@ -182,9 +182,10 @@
 
         function saveCopiedSkins(skins) {
             if (libraryStore) {
-                return libraryStore.saveCopiedSkins(skins).then(() => {
-                    copiedSkinsData = libraryStore.normalizeSkinCollection(skins || {});
-                });
+                // Re-load (not re-normalize the passed-in object) so bundled defaults
+                // keep their isUserSkin:false tag instead of being force-flipped to
+                // user-owned in the in-memory cache.
+                return libraryStore.saveCopiedSkins(skins).then(() => loadCopiedSkins());
             }
 
             return new Promise((resolve, reject) => {
@@ -237,7 +238,7 @@
         }
 
         // Send a request to the MAIN world helper and wait for response
-        function sendHelperRequest(action, data) {
+        function sendHelperRequest(action, data, timeoutMs) {
             return new Promise(function(resolve) {
                 var requestId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
@@ -256,11 +257,12 @@
                     detail: detail
                 }));
 
-                // Timeout after 3 seconds
+                // Default timeout is 3 seconds; actions backed by a network request
+                // (e.g. createSkinFromSaved) pass a longer timeoutMs.
                 setTimeout(function() {
                     document.removeEventListener('cp-toolkit-copied-skins-response', onResponse);
                     resolve({ error: 'timeout' });
-                }, 3000);
+                }, timeoutMs || 3000);
             });
         }
 
@@ -585,6 +587,7 @@
             'megamenu': ['megaMenu'],
             // News/Carousel/Slideshow categories
             'news': ['news'],
+            'news flash': ['news'],
             'carousels': ['news', 'slideshow'],
             'carousel': ['news'],
             'slideshow': ['slideshow'],
@@ -595,6 +598,8 @@
             // Links categories
             'links': ['links'],
             'link': ['links'],
+            'quick links': ['links'],
+            'quicklinks': ['links'],
             'popular links': ['links'],
             'popularlinks': ['links'],
             'popular resources': ['links'],
@@ -618,15 +623,16 @@
         // These are the categories users can select when creating snippets
         const SNIPPET_CATEGORIES = [
             { value: 'Buttons', label: 'Buttons', description: 'Shows in Fancy Button Builder' },
-            { value: 'News', label: 'News', description: 'Skins with "news" or "carousel" in name' },
+            { value: 'News Flash', label: 'News Flash', description: 'Skins with "news" or "carousel" in name' },
             { value: 'Slideshow', label: 'Slideshow', description: 'Skins with "slideshow" in name' },
             { value: 'Mega Menu', label: 'Mega Menu', description: 'Skins with "mega menu" in name' },
             { value: 'Nav Items', label: 'Nav Items', description: 'Navigation menu style editor' },
             { value: 'Footer', label: 'Footer', description: 'Skins with "footer" in name' },
-            { value: 'Links', label: 'Links', description: 'Skins with "link", "links", or "popular resources" in name' },
+            { value: 'Quick Links', label: 'Quick Links', description: 'Skins with "link", "links", or "popular resources" in name' },
             { value: 'Calendar', label: 'Calendar', description: 'Skins with "calendar" in name or calendar component' },
-            { value: 'Socials', label: 'Socials', description: 'Skins with "social media" or "socials" in name' },
+            { value: 'Social', label: 'Social', description: 'Skins with "social media" or "socials" in name' },
             { value: 'Headers', label: 'Headers', description: 'Skins with "header" or "headers" in name' },
+            { value: 'Utilities', label: 'Utilities', description: 'General-purpose overrides not tied to a single content widget' },
             { value: 'Custom', label: 'Custom', description: 'Custom category (won\'t appear in context lists)' }
         ];
 
@@ -634,17 +640,21 @@
         function getCategoryIcon(category) {
             const cat = (category || '').toLowerCase();
             const icons = {
-                'buttons':   '<path d="M21 3H3a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><line x1="9" y1="7" x2="15" y2="7"></line>',
-                'news':      '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><line x1="10" y1="6" x2="18" y2="6"></line><line x1="10" y1="10" x2="18" y2="10"></line><line x1="10" y1="14" x2="14" y2="14"></line>',
-                'slideshow': '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line>',
-                'mega menu': '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>',
-                'nav items': '<circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>',
-                'footer':    '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="15" x2="21" y2="15"></line>',
-                'links':     '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>',
-                'calendar':  '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
-                'socials':   '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>',
-                'headers':   '<polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line>',
-                'custom':    '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>'
+                'buttons':    '<path d="M21 3H3a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"></path><line x1="9" y1="7" x2="15" y2="7"></line>',
+                'news':       '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><line x1="10" y1="6" x2="18" y2="6"></line><line x1="10" y1="10" x2="18" y2="10"></line><line x1="10" y1="14" x2="14" y2="14"></line>',
+                'news flash': '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"></path><line x1="10" y1="6" x2="18" y2="6"></line><line x1="10" y1="10" x2="18" y2="10"></line><line x1="10" y1="14" x2="14" y2="14"></line>',
+                'slideshow':  '<rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line>',
+                'mega menu':  '<line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line>',
+                'nav items':  '<circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>',
+                'footer':     '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="15" x2="21" y2="15"></line>',
+                'links':      '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>',
+                'quick links':'<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>',
+                'calendar':   '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>',
+                'socials':    '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>',
+                'social':     '<circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>',
+                'headers':    '<polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line>',
+                'utilities':  '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
+                'custom':     '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>'
             };
             const svg = icons[cat] || '<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line>';
             return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + svg + '</svg>';
@@ -1808,6 +1818,27 @@
                     width: 14px;
                     height: 14px;
                 }
+                #cp-toolkit-snippets-sidebar .skin-new-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 8px 16px;
+                    background: #fff;
+                    color: #1976d2;
+                    border: 1px solid #1976d2;
+                    border-radius: 4px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: background 0.2s;
+                }
+                #cp-toolkit-snippets-sidebar .skin-new-btn:hover {
+                    background: #e3f2fd;
+                }
+                #cp-toolkit-snippets-sidebar .skin-new-btn svg {
+                    width: 14px;
+                    height: 14px;
+                }
                 /* Skin select in modals */
                 .snippet-modal-skin-select {
                     width: 100%;
@@ -1844,6 +1875,15 @@
                     border-radius: 4px;
                     font-size: 12px;
                     color: #795548;
+                }
+                .snippet-modal-info {
+                    margin-top: 12px;
+                    padding: 10px;
+                    background: #e3f2fd;
+                    border-left: 3px solid #1976d2;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    color: #444;
                 }
                 /* Edit/Delete buttons */
                 #cp-toolkit-snippets-sidebar .snippet-edit-btn,
@@ -2241,20 +2281,30 @@
             const sourceLink = sourceUrl
                 ? ` <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer" class="copied-skin-source-link" title="${escapeHtml(sourceUrl)}">Source</a>`
                 : '';
-
-            return `
-                <div class="snippet-item skin-library-item" data-skin-key="${escapeHtml(key)}">
-                    <div class="snippet-item-header">
-                        <span class="snippet-skin-badge">Skin</span>
-                        <span class="snippet-item-name">${escapeHtml(skin.name || key)}</span>
-                        <span class="copied-skin-meta">${escapeHtml(savedDate)}</span>
-                        <span class="snippet-item-category" title="${escapeHtml(skin.category || 'Saved Skins')}">${getCategoryIcon(skin.category || 'Saved Skins')}</span>
+            const isUserSkin = skin.isUserSkin !== false;
+            const skinBadge = isUserSkin ? 'Skin' : 'Default';
+            const headerDeleteBtn = isUserSkin ? `
                         <button class="copied-skin-delete-btn" data-skin-key="${escapeHtml(key)}" title="Delete saved skin">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                             </svg>
-                        </button>
+                        </button>` : '';
+            const actionDeleteBtn = isUserSkin ? `
+                            <button class="copied-skin-delete-btn" data-skin-key="${escapeHtml(key)}" title="Delete saved skin">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>` : '';
+
+            return `
+                <div class="snippet-item skin-library-item${isUserSkin ? '' : ' default-skin'}" data-skin-key="${escapeHtml(key)}">
+                    <div class="snippet-item-header">
+                        <span class="snippet-skin-badge">${skinBadge}</span>
+                        <span class="snippet-item-name">${escapeHtml(skin.name || key)}</span>
+                        <span class="copied-skin-meta">${escapeHtml(savedDate)}</span>
+                        <span class="snippet-item-category" title="${escapeHtml(skin.category || 'Saved Skins')}">${getCategoryIcon(skin.category || 'Saved Skins')}</span>${headerDeleteBtn}
                     </div>
                     <div class="snippet-item-content">
                         <div class="skin-library-meta">
@@ -2264,16 +2314,14 @@
                             <div class="skin-library-meta-row"><span class="skin-library-meta-label">Components</span><span>${componentCount} component(s)</span></div>
                         </div>
                         <div class="snippet-actions">
-                            <button class="skin-apply-btn" data-skin-key="${escapeHtml(key)}" title="Apply saved skin">
+                            <button class="skin-apply-btn" data-skin-key="${escapeHtml(key)}" title="Apply saved skin over an existing widget skin">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
                                 Apply Skin
                             </button>
-                            <button class="copied-skin-delete-btn" data-skin-key="${escapeHtml(key)}" title="Delete saved skin">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                </svg>
-                            </button>
+                            <button class="skin-new-btn" data-skin-key="${escapeHtml(key)}" title="Save as a new widget skin">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                New Skin
+                            </button>${actionDeleteBtn}
                         </div>
                     </div>
                 </div>
@@ -3414,6 +3462,134 @@
             }, 50);
         }
 
+        // Create a brand new widget skin from saved skin data, instead of
+        // overwriting an existing one.
+        async function showCreateSkinModal(savedSkinKey, savedSkinData) {
+            injectCopiedSkinsHelper();
+
+            const componentCount = savedSkinData.components ? savedSkinData.components.length : 0;
+            const sourceInfo = savedSkinData.sourceSkinName
+                ? 'Originally from: ' + savedSkinData.sourceSkinName + ' (ID: ' + savedSkinData.sourceSkinID + ')'
+                : '';
+            const escapedSavedSkinName = escapeHtml(savedSkinData.name || savedSkinKey);
+            const escapedSourceInfo = escapeHtml(sourceInfo);
+            const suggestedName = savedSkinData.name || savedSkinKey;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'snippet-modal-overlay';
+            overlay.innerHTML = `
+                <div class="snippet-modal">
+                    <div class="snippet-modal-header">
+                        <h3>Save as New Skin</h3>
+                        <button class="snippet-modal-close">&times;</button>
+                    </div>
+                    <div class="snippet-modal-body">
+                        <div class="snippet-modal-skin-info">
+                            <div class="snippet-modal-skin-info-name">${escapedSavedSkinName}</div>
+                            <div class="snippet-modal-skin-info-detail">${escapedSourceInfo}</div>
+                            <div class="snippet-modal-skin-info-detail">${componentCount} component(s) saved</div>
+                        </div>
+                        <div class="snippet-modal-field">
+                            <label for="new-skin-name">New Skin Name</label>
+                            <input type="text" id="new-skin-name" class="snippet-modal-skin-select" value="${escapeHtml(suggestedName)}" />
+                        </div>
+                        <div class="snippet-modal-info">
+                            This creates a brand new widget skin in this theme with these component styles. It won't overwrite anything existing — you'll need to assign the new skin to a widget afterward.
+                        </div>
+                    </div>
+                    <div class="snippet-modal-footer">
+                        <button class="snippet-modal-btn secondary snippet-modal-cancel">Cancel</button>
+                        <button class="snippet-modal-btn primary create-skin-confirm" style="background:#1976d2;">Create Skin</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const closeModal = function() { overlay.remove(); };
+
+            overlay.querySelector('.snippet-modal-close').addEventListener('click', closeModal);
+            overlay.querySelector('.snippet-modal-cancel').addEventListener('click', closeModal);
+            overlay.addEventListener('click', function(e) {
+                if (e.target === overlay) closeModal();
+            });
+
+            overlay.querySelector('.create-skin-confirm').addEventListener('click', async function() {
+                var newName = overlay.querySelector('#new-skin-name').value.trim();
+                if (!newName) {
+                    alert('Please enter a name for the new skin.');
+                    return;
+                }
+
+                var confirmed = confirm(
+                    'Create a new widget skin named "' + newName + '" with ' + componentCount + ' component(s) from "' + savedSkinData.name + '"?'
+                );
+                if (!confirmed) return;
+
+                var createBtn = overlay.querySelector('.create-skin-confirm');
+                createBtn.disabled = true;
+                createBtn.textContent = 'Creating...';
+
+                // Step 1: create + save the (empty) skin. Widget skin creation isn't
+                // actually committed to the database until saveTheme() completes, and
+                // its ID can change once it's really saved — so this step alone can
+                // take a few seconds and resolves the skin's real post-save identity
+                // before anything tries to write components onto it.
+                var createResp = await sendHelperRequest('createSkinFromSaved', { name: newName }, 25000);
+
+                if (!createResp.success) {
+                    closeModal();
+                    alert('Error creating new skin: ' + (createResp.error || 'Unknown error'));
+                    return;
+                }
+
+                // Step 2: apply the saved component styles onto the now-real skin,
+                // reusing the same "Apply Skin" path used to overwrite an existing skin.
+                var applyResp = await sendHelperRequest('applySkin', {
+                    targetSkinId: createResp.newSkinId,
+                    components: savedSkinData.components,
+                    sourceSkinId: savedSkinData.sourceSkinID
+                });
+
+                closeModal();
+
+                if (applyResp.success) {
+                    if (sidebarElement) {
+                        showToast(sidebarElement, 'Created new skin "' + createResp.newSkinName + '"');
+                    }
+
+                    var shouldSave = confirm(
+                        'New skin "' + createResp.newSkinName + '" created with ' + applyResp.copiedCount + ' component(s) applied.\n\n' +
+                        'Click OK to save the theme now, or Cancel to review first.\n' +
+                        '(Remember to save the theme before leaving the page.)'
+                    );
+
+                    if (shouldSave) {
+                        sendHelperRequest('saveTheme');
+                    }
+                } else {
+                    alert(
+                        'Skin "' + createResp.newSkinName + '" was created and saved, but applying the saved styles failed: ' +
+                        (applyResp.error || 'Unknown error') +
+                        '.\n\nThe new (empty) skin still exists — you can use "Apply Skin" on it manually.'
+                    );
+                }
+            });
+
+            overlay.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeModal();
+                if (e.key === 'Enter' && e.target.id === 'new-skin-name') {
+                    overlay.querySelector('.create-skin-confirm').click();
+                }
+            });
+
+            setTimeout(function() {
+                var input = overlay.querySelector('#new-skin-name');
+                input.focus();
+                input.select();
+            }, 50);
+        }
+
         // Import snippets from JSON file
         function importSnippets() {
             const input = document.createElement('input');
@@ -3871,6 +4047,7 @@
 
             content.addEventListener('click', async function(e) {
                 var applyBtn = e.target.closest('.skin-apply-btn');
+                var newSkinBtn = e.target.closest('.skin-new-btn');
                 var deleteBtn = e.target.closest('.copied-skin-delete-btn');
                 var currentSkins = content._copiedSkinsRef;
 
@@ -3880,6 +4057,16 @@
                     var applySkin = currentSkins[applySkinKey];
                     if (applySkin) {
                         showApplySkinModal(applySkinKey, applySkin);
+                    }
+                    return;
+                }
+
+                if (newSkinBtn) {
+                    e.stopPropagation();
+                    var newSkinKey = newSkinBtn.getAttribute('data-skin-key');
+                    var newSkinSource = currentSkins[newSkinKey];
+                    if (newSkinSource) {
+                        showCreateSkinModal(newSkinKey, newSkinSource);
                     }
                     return;
                 }

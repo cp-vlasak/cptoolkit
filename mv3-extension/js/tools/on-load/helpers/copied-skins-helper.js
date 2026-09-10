@@ -197,6 +197,131 @@
                         response.error = 'saveTheme not available';
                     }
                     break;
+
+                case 'createSkinFromSaved':
+                    // Create a brand new widget skin in the current theme. NOTE: this
+                    // only creates + saves the (empty) skin and resolves its real,
+                    // post-save identity — it does NOT apply any saved component
+                    // styles. WidgetSkinAdd/Index only stages the skin client-side;
+                    // it isn't actually committed to the database until saveTheme()
+                    // runs and completes, and its WidgetSkinID can change once it is
+                    // really saved. So the caller must saveTheme()+wait and re-locate
+                    // the skin by NAME (not by the ID this call returns) before doing
+                    // anything else with it — the caller should follow up with the
+                    // existing 'applySkin' action against the resolved newSkinId to
+                    // actually copy component styles onto it, reusing that already-
+                    // proven path instead of duplicating it here. This mirrors the
+                    // create -> save -> wait -> re-find-by-name -> apply sequence used
+                    // by the on-demand "Copy Multiple Skins" tool, which exists
+                    // precisely because skipping the save/re-find step causes
+                    // "widget skin does not exist" errors on the very next write.
+                    //
+                    // This is asynchronous (AJAX + saveTheme), so it dispatches its
+                    // own response event and returns early to skip the normal
+                    // synchronous dispatch below.
+                    var newSkinName = (request.name || '').trim();
+
+                    if (!window.DesignCenter || !DesignCenter.themeJSON || !DesignCenter.widgetSkinManager) {
+                        response.success = false;
+                        response.error = 'DesignCenter not available';
+                        break;
+                    }
+                    if (typeof $ === 'undefined' || !$.ajax) {
+                        response.success = false;
+                        response.error = 'jQuery not available on this page';
+                        break;
+                    }
+                    if (!newSkinName) {
+                        response.success = false;
+                        response.error = 'A skin name is required';
+                        break;
+                    }
+                    if (typeof window.saveTheme !== 'function') {
+                        response.success = false;
+                        response.error = 'saveTheme not available';
+                        break;
+                    }
+
+                    (function() {
+                        var themeID = DesignCenter.themeJSON.ThemeID;
+                        var newSkinID = DesignCenter.widgetSkinManager.newSkinID;
+                        var originalProcessNewSkin = DesignCenter.widgetSkinManager.processNewSkin;
+
+                        function respondAsync(detail) {
+                            document.dispatchEvent(new CustomEvent('cp-toolkit-copied-skins-response', {
+                                detail: Object.assign({ action: request.action, requestId: request.requestId }, detail)
+                            }));
+                        }
+
+                        function waitForSaveComplete() {
+                            return new Promise(function(resolve) {
+                                if (typeof $ !== 'undefined' && $ && $.fn) {
+                                    $(document).one('ajaxStop', function() {
+                                        setTimeout(resolve, 1000);
+                                    });
+                                } else {
+                                    setTimeout(resolve, 5000);
+                                }
+                            });
+                        }
+
+                        function findSkinByName(name) {
+                            var lowerName = name.toLowerCase();
+                            var skins = DesignCenter.themeJSON.WidgetSkins || [];
+                            for (var i = 0; i < skins.length; i++) {
+                                if (skins[i].Name && skins[i].Name.toLowerCase() === lowerName && skins[i].Components) {
+                                    return skins[i];
+                                }
+                            }
+                            return null;
+                        }
+
+                        // Intercept processNewSkin to register the skin without
+                        // opening the CMS "Manage Widget Skins" modal or triggering a
+                        // full UI refresh (same approach as the proven on-demand tools).
+                        DesignCenter.widgetSkinManager.processNewSkin = function(resp) {
+                            DesignCenter.themeJSON.WidgetSkins.push(resp);
+                            DesignCenter.widgetSkinManager.newSkinID--;
+                        };
+
+                        $.ajax({
+                            url: '/DesignCenter/WidgetSkinAdd/Index',
+                            type: 'POST',
+                            data: JSON.stringify({ themeID: themeID, widgetSkinID: newSkinID, name: newSkinName }),
+                            contentType: 'application/json',
+                            cache: false,
+                            success: function(createResponse) {
+                                try {
+                                    DesignCenter.widgetSkinManager.processNewSkin(createResponse);
+                                } catch (err) {
+                                    DesignCenter.widgetSkinManager.processNewSkin = originalProcessNewSkin;
+                                    respondAsync({ success: false, error: 'Failed to register new skin: ' + (err.message || String(err)) });
+                                    return;
+                                }
+                                DesignCenter.widgetSkinManager.processNewSkin = originalProcessNewSkin;
+
+                                window.saveTheme();
+                                waitForSaveComplete().then(function() {
+                                    var savedSkin = findSkinByName(newSkinName);
+                                    if (!savedSkin) {
+                                        respondAsync({ success: false, error: 'Skin was created but could not be found after saving' });
+                                        return;
+                                    }
+                                    respondAsync({
+                                        success: true,
+                                        newSkinId: savedSkin.WidgetSkinID,
+                                        newSkinName: savedSkin.Name
+                                    });
+                                });
+                            },
+                            error: function(xhr) {
+                                DesignCenter.widgetSkinManager.processNewSkin = originalProcessNewSkin;
+                                respondAsync({ success: false, error: xhr.statusText || 'Request failed' });
+                            }
+                        });
+                    })();
+
+                    return;
             }
         } catch (err) {
             response.error = err.message || String(err);
