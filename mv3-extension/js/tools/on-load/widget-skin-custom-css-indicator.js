@@ -27,10 +27,18 @@
   // cross the isolated/main boundary.
   function injectPageHelper() {
     if (document.getElementById("cp-toolkit-skin-css-reader-script")) return;
-    var s = document.createElement("script");
-    s.id = "cp-toolkit-skin-css-reader-script";
-    s.src = chrome.runtime.getURL("js/tools/on-load/helpers/widget-skin-custom-css-reader.js");
-    (document.head || document.documentElement).appendChild(s);
+    if (!chrome.runtime?.id) return;
+
+    try {
+      var s = document.createElement("script");
+      s.id = "cp-toolkit-skin-css-reader-script";
+      s.src = chrome.runtime.getURL("js/tools/on-load/helpers/widget-skin-custom-css-reader.js");
+      (document.head || document.documentElement).appendChild(s);
+    } catch (err) {
+      // Extension context invalidated (e.g. reloaded while this page's
+      // content script is still running) - skip quietly, same as the
+      // read/write guards in mini-ide.js.
+    }
   }
 
   document.addEventListener("cp-toolkit-skin-css-map-response", function(e) {
@@ -95,8 +103,16 @@
     if (!hdnSkinID || !select) return;
 
     requestSkinCssMap(hdnSkinID.value).then(function(hasCssByIndex) {
-      for (var i = 0; i < select.options.length; i++) {
-        var opt = select.options[i];
+      // Re-query rather than trust the `select` captured above: this is a
+      // callback after an async round-trip, and the CMS can rebuild this
+      // popover's content in that gap (confirmed live elsewhere in this
+      // file) - a stale reference here isn't necessarily still a <select>
+      // by the time this runs.
+      var freshSelect = getComponentSelect(popover);
+      if (!freshSelect || !freshSelect.options) return;
+
+      for (var i = 0; i < freshSelect.options.length; i++) {
+        var opt = freshSelect.options[i];
         // Confirmed live: selecting a different option in this dropdown
         // causes the CMS to rebuild these <option> elements, discarding
         // any attribute set on them (including a stored "original text"
@@ -225,21 +241,27 @@
     console.log("[CP Toolkit] Loaded " + thisTool);
   }
 
-  chrome.storage.local.get([thisTool], function(settings) {
-    if (chrome.runtime.lastError) {
-      console.error("[CP Toolkit] Error loading settings for " + thisTool + ":", chrome.runtime.lastError);
-      return;
+  if (chrome.runtime?.id) {
+    try {
+      chrome.storage.local.get([thisTool], function(settings) {
+        if (chrome.runtime.lastError) {
+          console.error("[CP Toolkit] Error loading settings for " + thisTool + ":", chrome.runtime.lastError);
+          return;
+        }
+
+        detect_if_cp_site(function() {
+          if (window.top !== window.self) return;
+          if (settings[thisTool] === false || !isThemesPage()) return;
+
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", init);
+          } else {
+            init();
+          }
+        });
+      });
+    } catch (err) {
+      // Extension context invalidated - skip quietly, same as mini-ide.js.
     }
-
-    detect_if_cp_site(function() {
-      if (window.top !== window.self) return;
-      if (settings[thisTool] === false || !isThemesPage()) return;
-
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-      } else {
-        init();
-      }
-    });
-  });
+  }
 })();

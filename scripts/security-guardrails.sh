@@ -138,6 +138,7 @@ const expectedDynamicVanityResources = [
   'data/fancy-button-library.json',
   'data/link-replacement-text.json',
   'data/modules.json',
+  'data/saved-skins.json',
   'data/snippets.json',
   'data/social-icons.json',
   'images/templates/*',
@@ -146,7 +147,8 @@ const expectedDynamicVanityResources = [
   'js/tools/on-load/helpers/copied-skins-helper.js',
   'js/tools/on-load/helpers/fix-copied-skin-references-helper.js',
   'js/tools/on-load/helpers/widget-skin-change-handler.js',
-  'js/tools/on-load/helpers/widget-skin-default-override-helper.js'
+  'js/tools/on-load/helpers/widget-skin-default-override-helper.js',
+  'js/tools/on-load/helpers/widget-skin-custom-css-reader.js'
 ];
 
 const expectedStaticFontAwesomeResources = [
