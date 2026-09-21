@@ -37,7 +37,7 @@
   ];
 
   function hasChromeStorage() {
-    return !!(root.chrome && chrome.storage && chrome.storage.local);
+    return !!(root.chrome && chrome.runtime && chrome.runtime.id && chrome.storage && chrome.storage.local);
   }
 
   function isPlainObject(value) {
@@ -51,15 +51,22 @@
         return;
       }
 
-      chrome.storage.local.get(key, function(result) {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.warn("[CP Toolkit](snippet-library-store) Failed to load " + key + ":", chrome.runtime.lastError);
-          resolve(undefined);
-          return;
-        }
+      try {
+        chrome.storage.local.get(key, function(result) {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            console.warn("[CP Toolkit](snippet-library-store) Failed to load " + key + ":", chrome.runtime.lastError);
+            resolve(undefined);
+            return;
+          }
 
-        resolve(result ? result[key] : undefined);
-      });
+          resolve(result ? result[key] : undefined);
+        });
+      } catch (err) {
+        // Extension context invalidated (e.g. the extension was reloaded while
+        // this page's content script was still running) — fall back quietly.
+        console.warn("[CP Toolkit](snippet-library-store) Extension context unavailable, failed to load " + key + ":", err);
+        resolve(undefined);
+      }
     });
   }
 
@@ -72,15 +79,24 @@
 
       var payload = {};
       payload[key] = value;
-      chrome.storage.local.set(payload, function() {
-        if (chrome.runtime && chrome.runtime.lastError) {
-          console.error("[CP Toolkit](snippet-library-store) Failed to save " + key + ":", chrome.runtime.lastError);
-          reject(chrome.runtime.lastError);
-          return;
-        }
 
+      try {
+        chrome.storage.local.set(payload, function() {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            console.error("[CP Toolkit](snippet-library-store) Failed to save " + key + ":", chrome.runtime.lastError);
+            reject(chrome.runtime.lastError);
+            return;
+          }
+
+          resolve();
+        });
+      } catch (err) {
+        // Extension context invalidated (e.g. the extension was reloaded while
+        // this page's content script was still running) — fall back quietly
+        // instead of leaving an unhandled rejection.
+        console.warn("[CP Toolkit](snippet-library-store) Extension context unavailable, failed to save " + key + ":", err);
         resolve();
-      });
+      }
     });
   }
 
