@@ -4528,11 +4528,12 @@
                 return null;
             }
 
-            // Check if the misc tab content is visible
+            // Note whether the misc tab content is visible yet - used below as a
+            // fallback query scope. Not warned on here: the retry loop that follows
+            // often finds the textarea on a later attempt once the tab finishes
+            // rendering, so a warning at this point would fire on normal timing,
+            // not just on a real failure. The loop already warns for real failure.
             const miscTabContent = document.querySelector('.cpPopOver ' + miscTabId);
-            if (!miscTabContent || miscTabContent.offsetParent === null) {
-                console.warn(TOOLKIT_NAME + ` Misc tab content not visible for component ${componentId}`);
-            }
 
             // Try to find the textarea with retries, expanding the Advanced Styles section if needed
             let textarea = null;
