@@ -135,14 +135,25 @@
           $("#mvcModal_mainElement").hide();
         }, 500);
 
-        // Periodically try to remove the temporary skin indicator
-        var clearSkin = setInterval(function() {
+        // Dismiss the CMS's temporary "new skin" indicator on every widget.
+        // A fixed-duration poll can lose the race against the CMS's own
+        // post-save content-container refresh, which can take longer than a
+        // few seconds on a real page - watch for the indicators actually
+        // appearing instead of blindly polling for a fixed window.
+        function dismissTemporarySkinIndicators() {
           $(".widget[class*='skin-'] .remove.widgetSkin").click();
-        }, 100);
+        }
+
+        dismissTemporarySkinIndicators();
+
+        var skinIndicatorObserver = new MutationObserver(function() {
+          dismissTemporarySkinIndicators();
+        });
+        skinIndicatorObserver.observe(document.body, { childList: true, subtree: true });
 
         setTimeout(function() {
-          clearInterval(clearSkin);
-        }, 5000);
+          skinIndicatorObserver.disconnect();
+        }, 15000);
 
         // NOTE: Previously we reopened the manage dialog here after 5s,
         // but saveTheme()'s completion callback already does that,
