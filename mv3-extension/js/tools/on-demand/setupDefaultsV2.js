@@ -821,7 +821,7 @@ background-color: ${getColor(6) || "#333"};
   height: 26px;
   display: inline;
   vertical-align: middle;
-}`
+`
     });
 
     /* Item Link — the "CivicPlus" anchor inside the byline text */
