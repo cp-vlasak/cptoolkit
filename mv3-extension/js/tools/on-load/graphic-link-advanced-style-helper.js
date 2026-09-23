@@ -24,9 +24,9 @@
   
   function initGraphicLinkHelper() {
     'use strict';
-    
+
     const TOOLKIT_NAME = '[CP Graphic Link Helper]';
-    
+
     // Only run on Graphic Links page - check both path and URL
     const currentPath = window.location.pathname.toLowerCase();
     const currentHref = window.location.href.toLowerCase();
@@ -329,17 +329,10 @@
     }
 
     function handleSelectorCopyClick(e) {
-      console.log('[CP Toolkit] modal click received, target:', e.target.tagName, e.target.className);
       const wrapper = e.target.closest('.cpSelectorCopyBtn');
-      if (!wrapper) {
-        console.log('[CP Toolkit] click was not on a selector-copy button, ignoring');
-        return;
-      }
+      if (!wrapper) return;
       const btn = e.target.closest('button');
-      if (!btn) {
-        console.log('[CP Toolkit] matched wrapper but not the inner button, ignoring');
-        return;
-      }
+      if (!btn) return;
       e.preventDefault();
       e.stopPropagation();
 
@@ -347,7 +340,6 @@
       const isHover = wrapper.dataset.cpHover === 'true';
       const buttonId = getFancyButtonId();
       const snippet = buildSelectorCopySnippet(buttonId, base, isHover);
-      console.log('[CP Toolkit] copying selector snippet:', snippet);
       copySelectorSnippetToClipboard(snippet);
 
       const tooltip = wrapper.querySelector('span');
@@ -648,6 +640,279 @@
       }
     }
     
+    // ==================== AUTO-ESTABLISH REAL ID FOR A NEW BUTTON ====================
+    // On a brand-new (never-saved) Graphic Link, the outer "Insert Fancy
+    // Button" button only opens the Builder - the resulting button has no
+    // real CMS-assigned ID until an actual server save happens, so the ID
+    // badge and Copy Selector buttons are useless until then. Previously
+    // this meant: insert, save, close, reopen, by hand, before you could
+    // style anything with a correct selector. This automates that whole
+    // round trip from a single click on the outer Insert Fancy Button: it
+    // drives the modal's own Insert click, fills a default link if none is
+    // set (a new Graphic Link can't be saved with an empty one), saves and
+    // publishes, and reopens the Builder pointed at the same, now-real
+    // button - all before any Advanced Styles are written, so nothing ever
+    // needs a selector rewritten after the fact.
+    const AUTO_ID_PENDING_KEY = 'cp-toolkit-fancy-button-autoid-pending';
+
+    function isAddLinkPage() {
+      // "Add Link" = brand new item, never saved. "Modify Link" = editing
+      // an existing one - this feature must never touch an existing button.
+      // This label renders as a plain <span> inside the link form's
+      // .actions block, not a heading tag.
+      const label = document.querySelector('#frmQLLinkList .actions span');
+      return !!(label && /^\s*Add Link\s*$/i.test((label.textContent || '').trim()));
+    }
+
+    function waitFor(checkFn, timeoutMs) {
+      return new Promise(function(resolve, reject) {
+        const start = Date.now();
+        (function poll() {
+          let result;
+          try { result = checkFn(); } catch (err) { result = null; }
+          if (result) return resolve(result);
+          if (Date.now() - start > timeoutMs) return reject(new Error('Timed out waiting for condition'));
+          setTimeout(poll, 150);
+        })();
+      });
+    }
+
+    // Calls whatever click handler(s) are actually bound on an element
+    // directly, as plain function calls, instead of dispatching a click
+    // event and hoping it's interpreted the way a real click would be.
+    // This is the same technique setupInsertButtonHandler() above already
+    // relies on (reading jQuery's internal event registry via $._data),
+    // reused here because it doesn't depend on event-trust semantics at
+    // all - it just invokes the JS function that's already bound.
+    function invokeBoundClickHandlers(el) {
+      if (!el) return false;
+      if (typeof $ === 'undefined' || typeof $._data !== 'function') return false;
+
+      let events;
+      try {
+        events = $._data(el, 'events');
+      } catch (err) {
+        console.warn(TOOLKIT_NAME + ' $._data threw while reading bound click handlers:', err);
+        return false;
+      }
+      const handlers = events && events.click;
+      if (!handlers || !handlers.length) return false;
+
+      const evt = $.Event('click');
+      evt.target = el;
+      evt.currentTarget = el;
+      let invoked = false;
+      handlers.forEach(function(h) {
+        try {
+          h.handler.call(el, evt);
+          invoked = true;
+        } catch (err) {
+          console.warn(TOOLKIT_NAME + ' Bound click handler threw during auto-id flow:', err);
+        }
+      });
+      return invoked;
+    }
+
+    function triggerClick(el, label) {
+      if (!el) {
+        console.warn(TOOLKIT_NAME + ' triggerClick called with no element (' + (label || 'unlabeled') + ')');
+        return false;
+      }
+      if (invokeBoundClickHandlers(el)) {
+        console.log(TOOLKIT_NAME + ' triggerClick(' + (label || 'unlabeled') + '): invoked via bound jQuery handler(s)');
+        return true;
+      }
+      // Fall back to a dispatched event if nothing is bound via jQuery.
+      // Some of these buttons respond to mousedown rather than click, so
+      // dispatching all three (matching what a real click actually
+      // produces) covers whichever one a given button is bound to,
+      // instead of guessing per-element.
+      try {
+        const opts = { bubbles: true, cancelable: true, view: window };
+        const downResult = el.dispatchEvent(new MouseEvent('mousedown', opts));
+        const upResult = el.dispatchEvent(new MouseEvent('mouseup', opts));
+        const clickResult = el.dispatchEvent(new MouseEvent('click', opts));
+        console.log(TOOLKIT_NAME + ' triggerClick(' + (label || 'unlabeled') + '): dispatched mousedown/mouseup/click, results=' + JSON.stringify([downResult, upResult, clickResult]));
+        return downResult || upResult || clickResult;
+      } catch (err) {
+        console.warn(TOOLKIT_NAME + ' dispatchEvent click fallback threw during auto-id flow:', err);
+        return false;
+      }
+    }
+
+    // Sets a text input's value in a way that's recognized by both plain
+    // jQuery validation (value + input/change/blur) and any modern
+    // framework-bound field that ignores a raw .value assignment (bypasses
+    // the native property setter the framework overrides, the standard
+    // workaround for that class of field).
+    function setFieldValue(el, value) {
+      if (!el) return;
+      const nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      try {
+        nativeSetter.call(el, value);
+      } catch (err) {
+        el.value = value;
+      }
+      el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, inputType: 'insertText', data: value }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
+    }
+
+    function getWebAddressInput() {
+      // #txtLinkURL is a visible but non-authoritative field - typing into
+      // it leaves it empty and instead populates #linkUrl, which is what's
+      // actually validated and saved. #linkUrl is the one that must be set.
+      return document.getElementById('linkUrl') || document.getElementById('txtLinkURL');
+    }
+
+    function getSaveAndPublishButton() {
+      return document.querySelector('input[name="saveAndPublish"]');
+    }
+
+    function getLastListedGraphicLinkRow() {
+      // New items always land at the bottom of the list on this page.
+      const rows = document.querySelectorAll('tr[data-item="dragdrop"].ui-sortable-handle[id]');
+      let lastRow = null;
+      rows.forEach(function(row) {
+        if (/^\d+$/.test(row.id)) lastRow = row;
+      });
+      return lastRow;
+    }
+
+    async function runAutoEstablishRealId() {
+      console.log(TOOLKIT_NAME + ' runAutoEstablishRealId: started.');
+      try {
+        console.log(TOOLKIT_NAME + ' A1: waiting for the Builder modal to open...');
+        await waitFor(getVisibleFancyButtonModal, 5000);
+        console.log(TOOLKIT_NAME + ' A1 done: modal is open.');
+
+        const insertBtn = document.querySelector('.insertFancy');
+        if (!insertBtn) throw new Error('Could not find the Builder\'s own Insert Fancy Button');
+        console.log(TOOLKIT_NAME + ' A2: clicking the modal\'s own Insert Fancy Button...');
+        triggerClick(insertBtn, 'modal insertFancy');
+
+        console.log(TOOLKIT_NAME + ' A3: waiting for the modal to close...');
+        await waitFor(function() { return !getVisibleFancyButtonModal(); }, 8000);
+        console.log(TOOLKIT_NAME + ' A3 done: modal closed.');
+
+        const webAddressInput = getWebAddressInput();
+        console.log(TOOLKIT_NAME + ' A4: Web Address field found=' + !!webAddressInput + ' current value="' + (webAddressInput ? webAddressInput.value : '') + '"');
+        if (webAddressInput && !webAddressInput.value.trim()) {
+          setFieldValue(webAddressInput, '/');
+          console.log(TOOLKIT_NAME + ' A4 done: filled blank Web Address with "/", now reads "' + webAddressInput.value + '"');
+        }
+
+        const savePublishBtn = getSaveAndPublishButton();
+        if (!savePublishBtn) throw new Error('Could not find the Save and Publish button');
+        console.log(TOOLKIT_NAME + ' A5: found Save and Publish button, about to click it.');
+
+        // A validation alert (e.g. "you haven't entered a valid link") fully
+        // blocks JS until a human dismisses it - confirmed live. Catch that
+        // specific case instead of silently hanging until someone notices
+        // and clicks it away, with no idea why the page froze.
+        let blockedByAlert = null;
+        const originalAlert = window.alert;
+        window.alert = function(message) {
+          blockedByAlert = message;
+          return originalAlert.call(window, message);
+        };
+
+        // The flag is set synchronously, immediately before the click, not
+        // after - if Save and Publish causes any kind of page change (a real
+        // navigation or an in-place form rebuild), anything placed after the
+        // click is not guaranteed to run at all. The alert check below still
+        // clears it afterward if the save genuinely failed.
+        sessionStorage.setItem(AUTO_ID_PENDING_KEY, '1');
+        console.log(TOOLKIT_NAME + ' A6: pending flag set, clicking Save and Publish now.');
+        triggerClick(savePublishBtn, 'saveAndPublish');
+        console.log(TOOLKIT_NAME + ' A6 done: click dispatched (script is still running, so no full navigation happened synchronously).');
+
+        // Give the save a moment in case nothing navigates on its own - if
+        // it already did, this reload is a harmless no-op on whatever page
+        // we're now on.
+        await new Promise(function(resolve) { setTimeout(resolve, 1200); });
+        window.alert = originalAlert;
+        console.log(TOOLKIT_NAME + ' A7: post-save wait finished. blockedByAlert=' + JSON.stringify(blockedByAlert) + ', current heading=' + JSON.stringify(document.querySelector('#frmQLLinkList .actions span') ? document.querySelector('#frmQLLinkList .actions span').textContent.trim() : null) + ', pendingFlagNow=' + sessionStorage.getItem(AUTO_ID_PENDING_KEY));
+
+        if (blockedByAlert) {
+          sessionStorage.removeItem(AUTO_ID_PENDING_KEY);
+          throw new Error('Save and Publish was blocked by a CMS validation alert: "' + blockedByAlert + '"');
+        }
+        console.log(TOOLKIT_NAME + ' A8: calling location.reload() now.');
+        location.reload();
+      } catch (err) {
+        sessionStorage.removeItem(AUTO_ID_PENDING_KEY);
+        console.warn(TOOLKIT_NAME + ' Auto-establish-ID flow stopped partway through, leaving the rest to be done by hand:', err);
+      }
+    }
+
+    async function resumeAutoEstablishRealIdAfterReload() {
+      if (sessionStorage.getItem(AUTO_ID_PENDING_KEY) !== '1') {
+        console.log(TOOLKIT_NAME + ' resumeAutoEstablishRealIdAfterReload: no pending flag, nothing to do.');
+        return;
+      }
+      sessionStorage.removeItem(AUTO_ID_PENDING_KEY);
+      console.log(TOOLKIT_NAME + ' resumeAutoEstablishRealIdAfterReload: pending flag found, resuming.');
+
+      try {
+        console.log(TOOLKIT_NAME + ' Step 1: waiting for the last listed row...');
+        const row = await waitFor(getLastListedGraphicLinkRow, 8000);
+        const realId = row.id;
+        console.log(TOOLKIT_NAME + ' Step 1 done: found row id ' + realId);
+
+        const fancyButtonLink = row.querySelector('a.fancyButton');
+        if (!fancyButtonLink) throw new Error('Could not find the .fancyButton link inside the last row (id ' + realId + ')');
+        console.log(TOOLKIT_NAME + ' Step 2: clicking the fancy button link in that row...');
+        triggerClick(fancyButtonLink, 'fancyButtonLink');
+
+        // This page has three "Modify" buttons - two hidden ones classed
+        // "modifyImage" for the plain Image / Mouse Over Image sections
+        // (not applicable to a Fancy Button), and the one that matters
+        // here, classed plain "modify", inside a container specifically
+        // named .addRemoveForFancyButton.
+        console.log(TOOLKIT_NAME + ' Step 3: waiting for the Modify button to appear...');
+        const modifyBtn = await waitFor(function() {
+          return document.querySelector('.addRemoveForFancyButton button.modify, .addRemoveForFancyButton .modify');
+        }, 5000);
+        console.log(TOOLKIT_NAME + ' Step 3 done: found Modify button, clicking it...', modifyBtn);
+        triggerClick(modifyBtn, 'modifyBtn');
+
+        console.log(TOOLKIT_NAME + ' Step 4: waiting for the Fancy Button Builder modal to appear...');
+        await waitFor(getVisibleFancyButtonModal, 5000);
+        console.log(TOOLKIT_NAME + ' Reopened the Builder for button #' + realId + ' with its real ID established.');
+      } catch (err) {
+        console.warn(TOOLKIT_NAME + ' Could not automatically reopen the Builder after saving - open it manually via Modify:', err);
+      }
+    }
+
+    let autoEstablishRealIdRunning = false;
+
+    function setupAutoEstablishRealId() {
+      resumeAutoEstablishRealIdAfterReload();
+
+      // Delegated, permanent listener instead of binding to one specific
+      // button element. This page has other scripts (e.g.
+      // graphic-link-autofill.js) that watch and rebuild parts of this form
+      // on their own, so a directly-bound listener can end up attached to a
+      // node that gets destroyed and replaced before the real click - a
+      // dataset flag confirming "bound" on the old node proves nothing
+      // about whichever node is actually there at click time. Delegation on
+      // document.body, bound once and never re-bound, is unaffected by any
+      // number of element replacements. Listening on mousedown rather than
+      // click since this button's own handler responds to mousedown.
+      document.body.addEventListener('mousedown', function(e) {
+        const target = e.target.closest ? e.target.closest('#insertFancyButton') : null;
+        if (!target) return;
+        if (!isAddLinkPage()) return;
+        if (autoEstablishRealIdRunning) return;
+        autoEstablishRealIdRunning = true;
+        console.log(TOOLKIT_NAME + ' Delegated mousedown on #insertFancyButton detected on Add Link page - starting auto-establish-ID flow.');
+        runAutoEstablishRealId().finally(function() {
+          autoEstablishRealIdRunning = false;
+        });
+      }, true);
+    }
+
     // ==================== INITIALIZATION ====================
     // console.log(TOOLKIT_NAME + ' Starting initialization...');
     // console.log(TOOLKIT_NAME + ' - document.readyState:', document.readyState);
@@ -662,6 +927,7 @@
         injectFancyButtonIdBadge();
         injectSelectorCopyButtons();
         setupInsertButtonHandler();
+        setupAutoEstablishRealId();
         startObserving();
       });
     } else {
@@ -671,6 +937,7 @@
       injectFancyButtonIdBadge();
       injectSelectorCopyButtons();
       setupInsertButtonHandler();
+      setupAutoEstablishRealId();
       startObserving();
     }
 
@@ -684,7 +951,8 @@
       fixRenderedFancyButtonStyles: fixRenderedFancyButtonStyles,
       processTextareas: processTextareas,
       injectFancyButtonIdBadge: injectFancyButtonIdBadge,
-      injectSelectorCopyButtons: injectSelectorCopyButtons
+      injectSelectorCopyButtons: injectSelectorCopyButtons,
+      runAutoEstablishRealId: runAutoEstablishRealId
     };
     
     // console.log(TOOLKIT_NAME + ' ✓ Ready');
