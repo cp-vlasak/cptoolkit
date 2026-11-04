@@ -6430,7 +6430,7 @@
             "Unit": 0,
             "Value": null
           },
-          "MiscellaneousStyles": "}\n\n.widget.skin126 .miniCalendar td, .widget.skin126 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widgetCalendar.skin126.wide .widgetBody.mediaLeft .text {\nmargin-left: 0 !important;\npadding-left: 1rem;",
+          "MiscellaneousStyles": "}\n\n.widget.skin126 .miniCalendar td, .widget.skin126 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widgetCalendar.skin126.wide .widgetBody:where(.mediaLeft, .mediaRight) .calendarInnerWrapper {\ndisplay: flex;\n}\n\n.widgetCalendar.skin126.wide .widgetBody.mediaLeft .text {\nmargin-left: 0 !important;\npadding-left: 1rem;\nflex: 1;\n}\n\n.widgetCalendar.skin126.wide .widgetBody.mediaRight .text {\nmargin-right: 0 !important;\npadding-right: 1rem;\nflex: 1;",
           "PaddingBottom": {
             "Unit": 0,
             "Value": null
@@ -12974,7 +12974,7 @@
             "Unit": 0,
             "Value": null
           },
-          "MiscellaneousStyles": "}\n\n.widget.skin149 .miniCalendar {\nborder-collapse: separate;\nborder-spacing: 0.5em;\n}\n\n.widget.skin149 .miniCalendar td, .widget.skin149 .miniCalendar th {\nwidth: calc(100% / 7);",
+          "MiscellaneousStyles": "}\n\n.widget.skin149 .miniCalendar {\nborder-collapse: separate;\nborder-spacing: 0.5em;\n}\n\n.widget.skin149 .miniCalendar td, .widget.skin149 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widgetCalendar.skin149.wide .widgetBody:where(.mediaLeft, .mediaRight) .calendarInnerWrapper {\ndisplay: flex;\n}\n\n.widgetCalendar.skin149.wide .widgetBody.mediaLeft .text {\nmargin-left: 0 !important;\npadding-left: 1rem;\nflex: 1;\n}\n\n.widgetCalendar.skin149.wide .widgetBody.mediaRight .text {\nmargin-right: 0 !important;\npadding-right: 1rem;\nflex: 1;",
           "PaddingBottom": {
             "Unit": 0,
             "Value": null
@@ -19518,7 +19518,7 @@
             "Unit": 0,
             "Value": null
           },
-          "MiscellaneousStyles": "}\n\n.widget.skin128 .miniCalendar td, .widget.skin128 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widgetCalendar.skin128.wide .widgetBody.mediaLeft .text {\nmargin-left: 0 !important;\npadding-left: 1rem;",
+          "MiscellaneousStyles": "}\n\n.widget.skin128 .miniCalendar td, .widget.skin128 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widgetCalendar.skin128.wide .widgetBody:where(.mediaLeft, .mediaRight) .calendarInnerWrapper {\ndisplay: flex;\n}\n\n.widgetCalendar.skin128.wide .widgetBody.mediaLeft .text {\nmargin-left: 0 !important;\npadding-left: 1rem;\nflex: 1;\n}\n\n.widgetCalendar.skin128.wide .widgetBody.mediaRight .text {\nmargin-right: 0 !important;\npadding-right: 1rem;\nflex: 1;",
           "PaddingBottom": {
             "Unit": 0,
             "Value": null
@@ -26062,7 +26062,7 @@
             "Unit": 0,
             "Value": null
           },
-          "MiscellaneousStyles": "}\n\n.widget.skin150 .miniCalendar td, .widget.skin150 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widget.skin150 .miniCalendar {\nborder-radius: 20px;\noverflow: hidden;",
+          "MiscellaneousStyles": "}\n\n.widget.skin150 .miniCalendar td, .widget.skin150 .miniCalendar th {\nwidth: calc(100% / 7);\n}\n\n.widget.skin150 .miniCalendar {\nborder-radius: 20px;\noverflow: hidden;\n}\n\n.widgetCalendar.skin150.wide .widgetBody:where(.mediaLeft, .mediaRight) .calendarInnerWrapper {\ndisplay: flex;\n}\n\n.widgetCalendar.skin150.wide .widgetBody.mediaLeft .text {\nmargin-left: 0 !important;\npadding-left: 1rem;\nflex: 1;\n}\n\n.widgetCalendar.skin150.wide .widgetBody.mediaRight .text {\nmargin-right: 0 !important;\npadding-right: 1rem;\nflex: 1;",
           "PaddingBottom": {
             "Unit": 0,
             "Value": 1
