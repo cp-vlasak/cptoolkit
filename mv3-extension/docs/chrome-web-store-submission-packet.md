@@ -1,22 +1,22 @@
 # Chrome Web Store Submission Packet
 
-Last updated: 2026-10-19
+Last updated: 2026-11-05
 
 Purpose: keep the upload/review notes for the MV3 Web Store readiness submission in the repo.
 
 ## Package
 
 - Extension name: `CivicPlus Internal Toolkit`
-- Submission version: `1.2.1` (late patch; `1.2.0` was submitted first on 2026-10-18 and this replaces it; last shipped version before that: `1.1.71`)
+- Submission version: `1.2.2` (emergency patch on top of `1.2.1`, which was merged to `main` on 2026-10-26; if `1.2.0` or `1.2.1` is still pending review in the dashboard, cancel it and upload this package in its place; last shipped version before the 1.2.x line: `1.1.71`)
 - Source folder: `mv3-extension`
 - Local unpacked test folder: the same `mv3-extension` source folder
 - Production build folder: none; the Store package is assembled directly from the tested source tree
-- Upload artifact: `mv3-extension/dist/civicplus-internal-toolkit-1.2.1.zip`
-- Verified size: 2,241,850 bytes
+- Upload artifact: `mv3-extension/dist/civicplus-internal-toolkit-1.2.2.zip`
+- Verified size: 2,242,363 bytes
 - Verified runtime file count: 191
-- SHA-256: `A6D2964040C79A69133E8B2AC28D5C361F19F5643FBFF5A89EE8D97A6E66DF4D`
+- SHA-256: `B86DE0B532C0C7730738AD7AF66625958948DC59EB34C017E56F64B2F13F0676`
 - Privacy policy URL: `https://cp-vlasak.github.io/cptoolkit/privacy.html`
-- Submission type: update to the existing Chrome Web Store item. If the 1.2.0 submission is still pending review, cancel it in the dashboard and upload this 1.2.1 package in its place (the version must be higher than 1.2.0); if 1.2.0 has already published, submit 1.2.1 as a normal update. This update adds one new permission, `declarativeContent` (green toolbar dot on CivicPlus-looking pages); its justification is in the permissions section below.
+- Submission type: update to the existing Chrome Web Store item. Compared with 1.1.71, the 1.2.x line adds one permission, `declarativeContent` (green toolbar dot on CivicPlus-looking pages); 1.2.2 adds no permissions or manifest changes beyond the version number. The justification is in the permissions section below.
 
 ## Single Purpose
 
@@ -66,13 +66,15 @@ If the dashboard asks for data categories, review carefully with the final priva
 
 1. Confirm local QA by loading the source-of-truth `mv3-extension` folder unpacked.
 2. Run release checks and guardrails.
-3. Create `mv3-extension/dist/civicplus-internal-toolkit-1.2.1.zip` directly from the tested source tree, including only `manifest.json`, `css/`, `data/`, `html/`, `images/`, `js/`, and `socials/`.
-4. Verify `manifest.json` is at the ZIP root, the packaged version is `1.2.1`, and every packaged file matches the source tree.
+3. Create `mv3-extension/dist/civicplus-internal-toolkit-1.2.2.zip` directly from the tested source tree, including only `manifest.json`, `css/`, `data/`, `html/`, `images/`, `js/`, and `socials/`.
+4. Verify `manifest.json` is at the ZIP root, the packaged version is `1.2.2`, and every packaged file matches the source tree.
 5. Upload the ZIP in Chrome Developer Dashboard.
 6. Review Package, Store Listing, Privacy Practices, and Distribution tabs.
 7. Submit for review.
 
-The artifact above was assembled and byte-compared against the source tree on 2026-10-19. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
+The artifact above was assembled and byte-compared against the source tree on 2026-11-05. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
+
+Version 1.2.2 is an emergency patch on top of 1.2.1 with one change: the Calendar Wrapper miscellaneous styles on the four grid calendar skin defaults (Calendar Grid Default, Boxes, Colored, Rounded Weekdays) in `data/saved-skins.json` were revised (equal-width day columns, a flex `.calendarInnerWrapper` when the widget has media on the left or right, and `flex: 1` on the media text blocks). Nothing else changed apart from the version number in `manifest.json` and `js/background/service-worker.js` and the new changelog entry. The runtime file list is identical to 1.2.1. Local unpacked acceptance testing for 1.2.2 is pending with the release owner; do not upload until it passes.
 
 Version 1.2.1 is a bugfix patch on top of 1.2.0: (1) the View All visited-state background on the Calendar and News Flash skin defaults was red and is now gray (`#757575`); (2) Multiple Category Upload no longer lets Submit be clicked twice while categories are saving; (3) the CSS editor no longer shows `PH0` for a skin class inside `:has()`/`:not()`; (4) an unsaved skin's temporary ID (`-1`, `-2`, ...) is no longer written into CSS, snippets or copied selectors, and leftover `.skin-N` text is repaired to the real ID when a saved skin is opened. The 1.2.0 package that was submitted first had SHA-256 `AB101DA3D279FB6E0DA79782FDFE15D51E8F5044BAE92A1F25FACD548A75C0BA`. Local unpacked acceptance testing for 1.2.1 is pending with the release owner; do not upload until it passes. Rollback checkpoint for the 1.1.6 release: `pre-v1.1.6-2026-07-27`.
 
