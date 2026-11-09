@@ -70,8 +70,8 @@
   function startNewSkinPreviewCleanup($, options) {
     var wantsReopen = !!(options && options.reopenManageWidgetSkins);
     var WINDOW_MS = 15000;      // how long to keep watching for late previews
-    var QUIET_MS = 600;         // page must be this quiet before settling
-    var MIN_WORK_MS = 1500;     // wait at least this long if nothing needed dismissing
+    var QUIET_MS = 800;         // page must be this quiet before settling
+    var MIN_WORK_MS = 3000;     // wait at least this long if nothing needed dismissing
 
     // Cover the page while the CMS re-renders containers, so the previews
     // flickering in and out are never seen.
