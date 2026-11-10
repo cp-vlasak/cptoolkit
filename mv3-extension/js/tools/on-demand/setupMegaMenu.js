@@ -54,8 +54,18 @@ async function getSkinID() {
   const handle = $("a.handle.options.insideMegaMenu");
   if (handle.length > 0) handle[0].click();
 
-  await sleep(500);
+  // Wait for the options popup to load its skin list (it can take a few seconds).
   let skinList = $(".cpTabPanel.insideMegaMenu select#skin > option");
+  for (let waited = 0; skinList.length === 0 && waited < 8000; waited += 250) {
+    await sleep(250);
+    skinList = $(".cpTabPanel.insideMegaMenu select#skin > option");
+  }
+  if (skinList.length === 0) {
+    throw new Error(
+      "Could not read the skin list from the Mega Menu widget options. " +
+      "Open one Mega Menu widget's options manually once, then run this tool again."
+    );
+  }
 
   function filterSkins(opts, list) {
     return list.filter((_, skin) => {
@@ -91,7 +101,7 @@ async function getSkinID() {
   return skinID;
 }
 
-(async () => {
+async function setupMegaMenu() {
   const requests = [];
 
   const skinID = await getSkinID();
@@ -101,6 +111,15 @@ async function getSkinID() {
   const mainNavItems = $(".rootNavMenu#mainNavMenu > li.topMenuItem").filter(
     (_, navItem) => navItem.getAttribute("data-displaymegamenu") === "True"
   );
+  console.log(`[CP Toolkit] Setup Mega Menu: ${mainNavItems.length} main nav item(s) have Mega Menu turned on`);
+  if (mainNavItems.length === 0) {
+    alert(
+      "No main navigation items have Mega Menu turned on, so there is nothing to set up. " +
+      "Set each item to Mega Menu first, then run this tool again."
+    );
+    return;
+  }
+
   for (let i = 0; i < mainNavItems.length; i++) {
     const navItem = mainNavItems[i];
 
@@ -135,8 +154,16 @@ async function getSkinID() {
     requests.push(setOptions(pageID, contentCollectionID, widgetID, contentContainerID, skinID, columnCount));
   }
 
-  await Promise.all(requests);
+  const results = await Promise.allSettled(requests);
+  const failed = results.filter((r) => r.status === "rejected").length;
+  console.log(`[CP Toolkit] Setup Mega Menu: ${results.length - failed} saved, ${failed} failed`);
+  if (failed > 0) alert(`Mega Menu setup: ${failed} of ${results.length} item(s) failed to save. See the console.`);
   setTimeout(() => {
     window.location.reload();
   }, 500);
-})();
+}
+
+setupMegaMenu().catch((err) => {
+  console.error("[CP Toolkit] Setup Mega Menu failed:", err);
+  alert("Setup Mega Menu stopped: " + (err && err.message ? err.message : err));
+});
