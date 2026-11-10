@@ -132,14 +132,18 @@ function ensureMegaMenuSetupStyles() {
     ".cp-mm-modal p{margin:0 0 12px;font-size:14px;line-height:1.4;}" +
     ".cp-mm-choice{display:flex;align-items:flex-start;gap:8px;margin:0 0 8px;font-size:14px;line-height:1.4;cursor:pointer;}" +
     ".cp-mm-choice input{margin-top:3px;}" +
-    ".cp-mm-search{width:100%;border:1px solid #c7c7c7;border-radius:4px;padding:6px;font-size:14px;margin:4px 0 6px;box-sizing:border-box;}" +
+    ".cp-mm-modal input,.cp-mm-modal select,.cp-mm-modal button{font-family:inherit;}" +
+    ".cp-mm-search{width:100%;border:1px solid #c7c7c7;border-radius:4px;padding:8px 10px;font-size:14px;margin:6px 0 14px;box-sizing:border-box;}" +
     ".cp-mm-select{width:100%;border:1px solid #c7c7c7;border-radius:4px;padding:6px;font-size:14px;min-height:200px;box-sizing:border-box;}" +
-    ".cp-mm-meta{margin-top:6px;font-size:12px;color:#555;}" +
-    ".cp-mm-cols{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:14px;}" +
-    ".cp-mm-cols input{width:70px;border:1px solid #c7c7c7;border-radius:4px;padding:6px;font-size:14px;}" +
+    ".cp-mm-meta{margin-top:8px;font-size:12px;color:#555;}" +
+    ".cp-mm-cols{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:16px;padding-top:16px;border-top:1px solid #e3e3e3;}" +
+    ".cp-mm-cols-text{display:flex;flex-direction:column;gap:2px;}" +
+    ".cp-mm-cols-label{font-size:14px;font-weight:700;}" +
+    ".cp-mm-cols-hint{font-size:12px;color:#555;}" +
+    ".cp-mm-cols input{width:80px;height:36px;border:1px solid #c7c7c7;border-radius:4px;padding:0 10px;font-size:14px;text-align:center;box-sizing:border-box;}" +
     ".cp-mm-error{margin-top:10px;font-size:13px;color:#b00020;min-height:1em;}" +
-    ".cp-mm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}" +
-    ".cp-mm-actions button{padding:8px 16px;font-size:14px;border-radius:4px;border:none;cursor:pointer;}" +
+    ".cp-mm-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px;}" +
+    ".cp-mm-actions button{padding:9px 18px;font-size:14px;border-radius:4px;border:none;cursor:pointer;}" +
     ".cp-mm-actions button.primary{background:#af282f;color:#fff;}" +
     ".cp-mm-actions button.secondary{background:#f2f2f2;color:#333;}" +
     ".cp-mm-actions button:disabled{opacity:0.5;cursor:not-allowed;}";
@@ -206,7 +210,10 @@ function showMegaMenuSetupModal(options) {
     modal.appendChild(listBox);
 
     const colsRow = el("label", "cp-mm-cols");
-    colsRow.appendChild(el("span", "", "Column count"));
+    const colsText = el("div", "cp-mm-cols-text");
+    colsText.appendChild(el("span", "cp-mm-cols-label", "Column count"));
+    colsText.appendChild(el("span", "cp-mm-cols-hint", "How many columns each mega menu is split into"));
+    colsRow.appendChild(colsText);
     const cols = document.createElement("input");
     cols.type = "number";
     cols.min = "1";
