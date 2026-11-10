@@ -85,12 +85,15 @@ async function getSkinID() {
   if (matchingSkins.length > 1) {
     // prettier-ignore
     const resp = prompt(`Multiple matching skins, enter one of: [${
-      matchingSkins.map((skin) => skin.innerText).join(", ")
-    }]`).toLowerCase();
+      matchingSkins.get().map((skin) => skin.innerText).join(", ")
+    }]`);
+    if (resp === null) throw new Error("Cancelled: no skin was chosen.");
 
-    matchingSkins = filterSkins([resp], matchingSkins);
+    const typed = resp.trim().toLowerCase();
+    const exact = matchingSkins.filter((_, skin) => skin.innerText.trim().toLowerCase() === typed);
+    matchingSkins = exact.length === 1 ? exact : filterSkins([typed], matchingSkins);
     if (matchingSkins.length === 1) skinID = matchingSkins[0].value;
-    else skinID = skinList[0].value;
+    else throw new Error(`"${resp}" does not match exactly one skin. Run the tool again and type a skin name in full.`);
   } else if (matchingSkins.length === 1) {
     skinID = matchingSkins[0].value;
   } else {
