@@ -16,7 +16,8 @@
   var ROOT_ID = 'cp-toolkit-skin-overlay';
   var STYLE_ID = 'cp-toolkit-skin-overlay-style';
   var FAILSAFE_MS = 45000;
-  var DISMISS_REVEAL_MS = 6000;
+  var DISMISS_REVEAL_MS = 6000;   // while working: when the Dismiss link appears
+  var DONE_AUTO_HIDE_MS = 2500;   // completion message: how long it stays
 
   var activeKeys = {};
   var pendingDone = null;
@@ -24,6 +25,7 @@
   var failsafeTimer = null;
   var doneTimer = null;
   var dismissTimer = null;
+  var showingDone = false;
 
   function activeCount() {
     return Object.keys(activeKeys).length;
@@ -64,6 +66,14 @@
     root.setAttribute('role', 'alertdialog');
     root.setAttribute('aria-live', 'polite');
     root.innerHTML = '<div class="cp-card"></div>';
+    // A finished message can be closed by clicking outside it or pressing Esc.
+    // While work is still running the cover stays, so half-done pages are hidden.
+    root.addEventListener('click', function(event) {
+      if (showingDone && event.target === root) hideAll();
+    });
+    document.addEventListener('keydown', function(event) {
+      if (showingDone && event.key === 'Escape') hideAll();
+    });
     document.body.appendChild(root);
     return root;
   }
@@ -76,7 +86,7 @@
       .replace(/"/g, '&quot;');
   }
 
-  function paint(html) {
+  function paint(html, dismissNow) {
     var overlay = ensureRoot();
     overlay.querySelector('.cp-card').innerHTML =
       html + '<button type="button" class="cp-dismiss">Dismiss</button>';
@@ -84,6 +94,10 @@
     overlay.classList.add('cp-open');
 
     clearTimeout(dismissTimer);
+    if (dismissNow) {
+      overlay.querySelector('.cp-dismiss').classList.add('cp-visible');
+      return;
+    }
     dismissTimer = setTimeout(function() {
       var button = overlay.querySelector('.cp-dismiss');
       if (button) button.classList.add('cp-visible');
@@ -91,6 +105,7 @@
   }
 
   function renderWorking(title, detail) {
+    showingDone = false;
     paint(
       '<div class="cp-spinner"></div>' +
       '<p class="cp-title">' + escapeHtml(title) + '</p>' +
@@ -102,14 +117,16 @@
     var items = (done.lines || []).map(function(line) {
       return '<li>' + escapeHtml(line) + '</li>';
     }).join('');
+    showingDone = true;
     paint(
       '<div class="cp-check">&#10003;</div>' +
       '<p class="cp-title">' + escapeHtml(done.title) + '</p>' +
       (done.detail ? '<p class="cp-detail">' + escapeHtml(done.detail) + '</p>' : '') +
-      (items ? '<ul>' + items + '</ul>' : '')
+      (items ? '<ul>' + items + '</ul>' : ''),
+      true
     );
     clearTimeout(doneTimer);
-    doneTimer = setTimeout(hideAll, done.autoHideMs || 5000);
+    doneTimer = setTimeout(hideAll, done.autoHideMs || DONE_AUTO_HIDE_MS);
   }
 
   function armFailsafe() {
@@ -121,6 +138,7 @@
   }
 
   function hideAll() {
+    showingDone = false;
     activeKeys = {};
     pendingDone = null;
     clearTimeout(failsafeTimer);

@@ -239,9 +239,30 @@
       // with no modal on top of it, blocking the page until a refresh.
       setTimeout(releaseOrphanedModalBackdrop, 2000);
       setTimeout(releaseOrphanedModalBackdrop, 5000);
-      // Give the follow-up save a moment to go through, then announce once.
-      setTimeout(announceCompletedCopies, 2500);
+      // Announce as soon as the follow-up save's requests have finished; a
+      // fallback covers a save that sends nothing.
+      announceWhenSaveFinishes();
     }, 0);
+  }
+
+  var announceScheduled = false;
+  function announceWhenSaveFinishes() {
+    if (announceScheduled) return;
+    announceScheduled = true;
+    var done = false;
+    function finish(delay) {
+      if (done) return;
+      done = true;
+      announceScheduled = false;
+      setTimeout(announceCompletedCopies, delay);
+    }
+    var jq = window.jQuery;
+    if (jq && jq.active > 0) {
+      jq(document).one('ajaxStop', function() { finish(250); });
+      setTimeout(function() { finish(0); }, 8000);
+    } else {
+      finish(400);
+    }
   }
 
   /**
@@ -267,7 +288,7 @@
         title: title,
         detail: detail,
         lines: lines,
-        autoHideMs: 6000
+        autoHideMs: 2500
       });
     } else {
       showSummaryToast(title, detail, lines);
@@ -428,6 +449,20 @@
     if (window.CPToolkitSkinOverlay) window.CPToolkitSkinOverlay.hide(SAVE_OVERLAY_KEY);
   }
 
+  var skinIdPoll = null;
+  function pollForNewSkinIds() {
+    if (skinIdPoll) clearInterval(skinIdPoll);
+    var started = Date.now();
+    skinIdPoll = setInterval(function() {
+      checkForNewSkinIds();
+      var waitingForIds = newSkinsBeforeSave.length > 0;
+      if (waitingForIds && Date.now() - started < 15000) return;
+      clearInterval(skinIdPoll);
+      skinIdPoll = null;
+      endSaveOverlayIfIdle();
+    }, 250);
+  }
+
   /**
    * Wrap saveTheme to detect new skin IDs after save
    */
@@ -501,12 +536,9 @@
       // Call original save
       var result = originalSave.apply(this, arguments);
 
-      // After save completes, check for new skin IDs
-      setTimeout(checkForNewSkinIds, 2000);
-      setTimeout(function() {
-        checkForNewSkinIds(); // Retry in case first check was too early
-        endSaveOverlayIfIdle();
-      }, 5000);
+      // After the save, look for the new real skin IDs every quarter second
+      // and carry on the moment they arrive (instead of fixed 2 s / 5 s waits).
+      pollForNewSkinIds();
 
       return result;
     };

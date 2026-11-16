@@ -108,5 +108,11 @@
     "urlPatterns": ["*://*/DesignCenter/Themes/*", "*://*/Admin/DesignCenter/Themes/*"],
     "help": "Comprehensive theme setup tool that configures professional defaults for Site Styles (typography, spacing), Menu Styles (main nav, secondary nav, mega menu, dropdowns), Banner Styles, Container Styles, and Widget Skins (Default, Features, Social Media, Mega Menu, Graphic Buttons, Footer, Powered By). Walks you through configuration options with prompts.",
     "helpPages": "Theme Manager"
+  },
+  "Setup Mega Menu": {
+    "file": "setupMegaMenu.js",
+    "urlPatterns": ["*://*/*"],
+    "help": "This tool will automatically setup the Mega Menu options on each main navigation item.",
+    "helpPages": "Everywhere"
   }
 }

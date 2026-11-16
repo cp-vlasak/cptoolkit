@@ -475,7 +475,7 @@
     return new Promise(function(resolve) {
       if (typeof $ !== 'undefined' && $ && $.fn) {
         $(document).one('ajaxStop', function() {
-          setTimeout(resolve, 1000); // extra buffer after AJAX completes
+          setTimeout(resolve, 300); // short buffer after AJAX completes
         });
       } else {
         setTimeout(resolve, 5000); // fallback
@@ -966,7 +966,7 @@
           failed++;
           logProgress('Failed "' + skinLabel + '": ' + (result.error || 'unknown error'), 'error');
         }
-        await new Promise(function(r) { setTimeout(r, 150); });
+        await new Promise(function(r) { setTimeout(r, 50); });
       }
 
       // Phase 2: Create new skins → save → apply styles
@@ -990,7 +990,7 @@
             failed++;
             logProgress('Failed to create "' + createItem.skinName + '": ' + (createResult.error || 'unknown error'), 'error');
           }
-          await new Promise(function(r) { setTimeout(r, 300); });
+          await new Promise(function(r) { setTimeout(r, 100); });
         }
 
         if (createdItems.length > 0) {
@@ -1038,7 +1038,7 @@
               failed++;
               logProgress('Could not find created skin "' + ci.skinName + '" after save', 'error');
             }
-            await new Promise(function(r) { setTimeout(r, 150); });
+            await new Promise(function(r) { setTimeout(r, 50); });
           }
         }
       }
@@ -1080,10 +1080,10 @@
       }
 
       progressText.textContent = summary + ' — Refreshing page...';
-      logProgress('Refreshing page in 3 seconds...');
+      logProgress('Refreshing page...');
       setTimeout(function() {
         window.location.reload();
-      }, 3000);
+      }, 1000);
     });
   }
 
