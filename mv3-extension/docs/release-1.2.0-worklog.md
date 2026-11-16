@@ -1,6 +1,6 @@
 # CP Toolkit — Next Release Worklog
 
-Status: `1.2.2` (emergency patch, 2026-11-05) is prepared on top of the merged `1.2.1`. Upload package: `mv3-extension/dist/civicplus-internal-toolkit-1.2.2.zip`. Release-owner acceptance testing was done on 2026-11-12; pending: the GitHub PR and Store submission. `1.2.0` was submitted 2026-10-18 and `1.2.1` was merged to `main` on 2026-10-26 (PR #36); previous shipped version: `1.1.71`.
+Status: `1.2.2` (emergency patch, 2026-11-05) is prepared on top of the merged `1.2.1`. Upload package: `mv3-extension/dist/civicplus-internal-toolkit-1.2.2.zip`. Release-owner acceptance testing was done on 2026-11-12; the GitHub PR (#37) was merged to `main` and the Chrome Web Store approved `1.2.2` (reported by the release owner, 2026-11-16). Nothing is pending for this release. `1.2.0` was submitted 2026-10-18 and `1.2.1` was merged to `main` on 2026-10-26 (PR #36); previous shipped version: `1.1.71`.
 
 This is the running rundown of everything on `pr/widget-skin-custom-css-indicator` that hasn't shipped yet (i.e. everything ahead of `main`). Append new dated entries below as more work lands — do not rewrite prior entries.
 

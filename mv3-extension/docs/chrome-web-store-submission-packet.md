@@ -1,13 +1,13 @@
 # Chrome Web Store Submission Packet
 
-Last updated: 2026-11-12
+Last updated: 2026-11-16
 
 Purpose: keep the upload/review notes for the MV3 Web Store readiness submission in the repo.
 
 ## Package
 
 - Extension name: `CivicPlus Internal Toolkit`
-- Submission version: `1.2.2` (emergency patch on top of `1.2.1`, which was merged to `main` on 2026-10-26; if `1.2.0` or `1.2.1` is still pending review in the dashboard, cancel it and upload this package in its place; last shipped version before the 1.2.x line: `1.1.71`)
+- Submission version: `1.2.2` (emergency patch on top of `1.2.1`, which was merged to `main` on 2026-10-26; merged to `main` as PR #37 and approved by the Chrome Web Store, reported 2026-11-16; last shipped version before the 1.2.x line: `1.1.71`)
 - Source folder: `mv3-extension`
 - Local unpacked test folder: the same `mv3-extension` source folder
 - Production build folder: none; the Store package is assembled directly from the tested source tree
