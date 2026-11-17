@@ -117,8 +117,8 @@
   },
   "Facebook Feed Generator": {
     "file": "facebook-feed-generator.js",
-    "urlPatterns": ["*://*/*Layout-Page"],
-    "help": "This tool builds the Facebook feed code for a Custom HTML widget. Paste the Facebook Page link, choose the size, and the finished code (with the resize script included) is copied to your clipboard.",
-    "helpPages": "Layout Pages"
+    "urlPatterns": ["*://*/*"],
+    "help": "This tool builds the Facebook feed code for a Custom HTML widget. Turn Live Edit on, paste the Facebook Page link, choose the size, and the finished code (with the resize script included) is copied to your clipboard.",
+    "helpPages": "Everywhere"
   }
 }

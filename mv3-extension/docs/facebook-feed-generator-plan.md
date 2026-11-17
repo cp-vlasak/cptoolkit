@@ -40,7 +40,7 @@ Facebook's `tabs=timeline` parameter is currently broken; the only known fix (fo
 
 ## Where the menu item shows
 
-Same limit as "Copy containers to another layout" and "Insert Government Websites by CivicPlus": `urlPatterns: ["*://*/*Layout-Page"]`, help pages "Layout Pages".
+Shows on every page, like "Setup Mega Menu": `urlPatterns: ["*://*/*"]`, help pages "Everywhere". (First tried the Layout-Page-only pattern; it never matched regular pages with Live Edit on, which is where the Custom HTML widget gets dropped.) The tool itself warns when Live Edit is off.
 
 ## Guardrails
 

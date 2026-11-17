@@ -156,13 +156,13 @@ function testScriptBlockCompiles() {
   new Function(match[1]);
 }
 
-function testRegisteredLikeTheOtherLayoutTools() {
+function testRegisteredLikeTheOtherEverywhereTools() {
   const tools = JSON.parse(read("data/on-demand-tools.json").replace(/^﻿/, ""));
   const entry = tools["Facebook Feed Generator"];
   assert.ok(entry, "registered in on-demand-tools.json");
   assert.strictEqual(entry.file, "facebook-feed-generator.js");
-  assert.deepStrictEqual(Array.from(entry.urlPatterns), Array.from(tools["Copy containers to another layout"].urlPatterns));
-  assert.strictEqual(entry.helpPages, "Layout Pages");
+  assert.deepStrictEqual(Array.from(entry.urlPatterns), Array.from(tools["Setup Mega Menu"].urlPatterns));
+  assert.strictEqual(entry.helpPages, "Everywhere");
   assert.ok(fs.existsSync(path.join(repoRoot, "js/tools/on-demand/" + entry.file)), "file exists");
 }
 
@@ -175,7 +175,7 @@ function testRegisteredLikeTheOtherLayoutTools() {
   testInjectionIsHarmless,
   testOnlyFacebookHosts,
   testScriptBlockCompiles,
-  testRegisteredLikeTheOtherLayoutTools
+  testRegisteredLikeTheOtherEverywhereTools
 ].forEach((test) => {
   test();
   console.log("ok - " + test.name);
