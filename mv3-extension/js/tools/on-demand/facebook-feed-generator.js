@@ -278,6 +278,12 @@
     var height = readSize(options.height, LIMITS.minHeight, LIMITS.maxHeight, "Height");
     if (!height.ok) return { ok: false, field: "height", error: height.error };
 
+    // The iframe title is what screen readers announce (WCAG), so it is required.
+    var title = String(options.title == null ? "" : options.title).replace(/\s+/g, " ").trim();
+    if (!title) {
+      return { ok: false, field: "title", error: "Enter a feed title. Screen readers read it aloud, so every Facebook feed needs one." };
+    }
+
     var src = new URL(PLUGIN_URL);
     src.searchParams.set("href", link.href);
     if (options.timeline) src.searchParams.set("tabs", "timeline");
@@ -290,8 +296,6 @@
     src.searchParams.set("show_facepile", "true");
     // Facebook's own embed ends with a bare "appId" (no value); the working reference does too.
     var srcText = src.toString() + "&appId";
-
-    var title = String(options.title == null ? "" : options.title).replace(/\s+/g, " ").trim() || "Facebook feed";
 
     var iframe =
       '<iframe src="' + srcText + '" title="' + escapeAttr(title) + '" width="' + width.value +
@@ -452,8 +456,10 @@
     sizes.appendChild(field("Height (px)", heightInput, "Largest height, " + LIMITS.minHeight + " to " + LIMITS.maxHeight));
     modal.appendChild(sizes);
 
-    var titleInput = textInput("text", "", "Town of Duck Facebook feed");
-    modal.appendChild(field("Feed title (optional)", titleInput, "Read by screen readers. Leave blank for “Facebook feed”."));
+    var titleInput = textInput("text", "", "Parks and Recreation Facebook feed");
+    titleInput.required = true;
+    titleInput.setAttribute("aria-required", "true");
+    modal.appendChild(field("Feed title (required)", titleInput, "Read aloud by screen readers. Describe whose feed it is."));
 
     var checks = el("div", "cp-fb-checks");
     var showPosts = checkbox("Show posts", "(show_posts=true)", true);
@@ -485,7 +491,7 @@
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    var inputs = { link: linkInput, width: widthInput, height: heightInput };
+    var inputs = { link: linkInput, width: widthInput, height: heightInput, title: titleInput };
 
     function close() {
       document.removeEventListener("keydown", onKey, true);

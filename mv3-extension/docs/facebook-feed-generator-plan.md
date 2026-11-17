@@ -31,7 +31,7 @@ Facebook's `tabs=timeline` parameter is currently broken; the only known fix (fo
 
 - Facebook Page link (required). Also accepts a pasted existing plugin `src`, using its `href`.
 - Width and height. Default 500 by 520. They become the iframe's starting size and the resize script's maximums.
-- Feed title (optional), read by screen readers; blank gives "Facebook feed". The reference uses "Town of Duck Facebook feed".
+- Feed title (required for WCAG): the iframe `title` screen readers announce. Blank is refused with a message. Placeholder is "Parks and Recreation Facebook feed".
 - Show posts (`show_posts=true`): ticked by default.
 - Add timeline tab (`tabs=timeline`): unticked by default.
 - Primary button "Copy code"; Cancel/Close; Esc and click-outside close it.

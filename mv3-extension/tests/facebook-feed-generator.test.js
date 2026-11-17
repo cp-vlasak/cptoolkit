@@ -99,8 +99,14 @@ function testOptions() {
   const noPosts = build({ showPosts: false });
   assert.ok(noPosts.code.indexOf("show_posts") === -1, "show_posts is left out when unticked");
 
-  const blankTitle = build({ title: "   " });
-  assert.ok(blankTitle.code.indexOf('title="Facebook feed"') !== -1, "blank title falls back");
+  // The iframe title is required for screen readers (WCAG): blank, spaces-only and missing are all refused.
+  ["", "   ", "\n\t "].forEach((blank) => {
+    const refused = build({ title: blank });
+    assert.strictEqual(refused.ok, false, "blank title must be refused");
+    assert.strictEqual(refused.field, "title");
+  });
+  assert.strictEqual(tool.buildFacebookFeedCode({ link: "https://www.facebook.com/x", width: "500", height: "520", showPosts: true }).ok, false, "missing title must be refused");
+  assert.ok(build({ title: "  Parks   and Recreation  " }).code.indexOf('title="Parks and Recreation"') !== -1, "title is tidied");
 }
 
 function testSizeLimits() {
