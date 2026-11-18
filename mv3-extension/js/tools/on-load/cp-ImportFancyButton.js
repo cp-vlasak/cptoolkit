@@ -933,7 +933,8 @@
               .cp-template-card-meta {
                 display: block;
                 align-items: center;
-                padding: 9px 58px 8px 10px;
+                /* Right padding clears all three icons (edit, dark toggle, delete) with a visible gap. */
+                padding: 9px 88px 8px 10px;
                 color: #333;
                 font-size: 12px;
                 font-weight: 600;
@@ -1877,7 +1878,9 @@
               .replace(/^(custom|builtin):/, "")
               .replace(/_/g, " ");
 
-            var preview = buildFancyButtonPreview(template, isCustom ? null : displayName);
+            // Built-ins that define previewText (the Standard set) get their name shown as the label;
+            // built-ins without it, like the Design System buttons, keep their own text (e.g. "Link Name").
+            var preview = buildFancyButtonPreview(template, isCustom || !template.previewText ? null : displayName);
 
             // Check persisted dark bg state, default Standard_5 to dark
             var isDark = darkBgToggles[key];
