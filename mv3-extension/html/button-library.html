@@ -26,6 +26,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           Export
         </button>
+        <button id="btn-select" class="toolbar-btn" title="Pick several saved buttons and delete them at once">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+          Select to Delete
+        </button>
       </div>
       <div id="toolbar-right">
         <div id="button-library-search-wrap">
@@ -48,6 +52,14 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <div id="bulk-bar">
+      <span id="bulk-count">0 selected</span>
+      <button type="button" id="bulk-all" class="toolbar-btn" title="Select every saved button currently shown (respects search and filters)">Select all shown</button>
+      <button type="button" id="bulk-clear" class="toolbar-btn">Clear</button>
+      <button type="button" id="bulk-delete" class="toolbar-btn danger" disabled>Delete selected</button>
+      <button type="button" id="bulk-done" class="toolbar-btn">Done</button>
     </div>
 
     <div id="buttons-empty" class="empty-state" style="display:none;">

@@ -622,10 +622,10 @@
               }
               .cp-template-card {
                 position: relative;
-                padding: 2em 0;
+                padding: 0 0 1em;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
+                justify-content: flex-start;
                 border-radius: 8px;
                 cursor: pointer;
                 transition: border-color 0.2s, box-shadow 0.2s;
@@ -638,6 +638,9 @@
                 pointer-events: none;
                 padding: 5px;
                 border: 2px solid transparent;
+                /* Titles sit at the top-left of the tile; the button is centered in the space below. */
+                margin-top: auto;
+                margin-bottom: auto;
               }
               .cp-template-card.selected .cp-template-preview {
                 border-color: #af282f;
@@ -930,11 +933,12 @@
               .cp-template-card-meta {
                 display: block;
                 align-items: center;
-                padding: 9px 58px 0 10px;
+                padding: 9px 58px 8px 10px;
                 color: #333;
                 font-size: 12px;
                 font-weight: 600;
                 min-height: 31px;
+                text-align: left;
               }
               .cp-template-card-name {
                 display: -webkit-box;
@@ -983,6 +987,85 @@
               }
               .cp-template-delete:hover {
                 color: #cc0000;
+              }
+              /* Bulk delete ("Select to Delete") mode */
+              .cp-bulk-bar {
+                display: none;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+                padding: 8px 10px;
+                background: #fbeaea;
+                border: 1px solid #e3b4b6;
+                border-radius: 6px;
+                font-size: 12px;
+                color: #333;
+              }
+              .cp-bulk-bar.active {
+                display: flex;
+              }
+              .cp-bulk-bar .cp-bulk-count {
+                font-weight: 600;
+                margin-right: auto;
+              }
+              .cp-bulk-bar button {
+                background: #fff;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 12px;
+                cursor: pointer;
+                color: #555;
+                line-height: normal !important;
+                width: auto !important;
+              }
+              .cp-bulk-bar button:hover:not(:disabled) {
+                border-color: #af282f;
+                color: #af282f;
+              }
+              .cp-bulk-bar button.cp-bulk-delete {
+                background: #af282f;
+                border-color: #af282f;
+                color: #fff;
+              }
+              .cp-bulk-bar button.cp-bulk-delete:hover:not(:disabled) {
+                background: #8f2026;
+                color: #fff;
+              }
+              .cp-bulk-bar button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+              }
+              button#cp-lib-select.active {
+                background: #af282f;
+                border-color: #af282f;
+                color: #fff;
+              }
+              .cp-bulk-check {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 18px !important;
+                height: 18px !important;
+                margin: 0 !important;
+                cursor: pointer;
+                accent-color: #af282f;
+                z-index: 2;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card-btns {
+                display: none;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card-meta {
+                padding-right: 34px;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card.cp-bulk-locked {
+                opacity: 0.45;
+                cursor: not-allowed;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card.cp-bulk-picked {
+                border-color: #af282f;
+                box-shadow: 0 0 0 2px rgba(175, 40, 47, 0.35);
               }
               .cp-template-preview.cp-preview-dark {
                 background: #2a2a2a;
@@ -1157,6 +1240,7 @@
                       <button id="cp-lib-view-full" title="Open the full button library page">View Full Library</button>
                       <button id="cp-lib-import" title="Import saved buttons from a file">Import Library</button>
                       <button id="cp-lib-export" title="Export saved buttons to a file">Export Library</button>
+                      <button id="cp-lib-select" title="Pick several saved buttons and delete them at once">Select to Delete</button>
                     </div>
                     <div class="cp-library-filters">
                       <div class="cp-library-search-wrap">
@@ -1167,6 +1251,13 @@
                         <div id="cp-template-filter-popover"></div>
                       </div>
                     </div>
+                  </div>
+                  <div class="cp-bulk-bar" id="cp-bulk-bar">
+                    <span class="cp-bulk-count" id="cp-bulk-count">0 selected</span>
+                    <button type="button" id="cp-bulk-all" title="Select every saved button currently shown (respects search and filters)">Select all shown</button>
+                    <button type="button" id="cp-bulk-clear">Clear</button>
+                    <button type="button" id="cp-bulk-delete" class="cp-bulk-delete" disabled>Delete selected</button>
+                    <button type="button" id="cp-bulk-done">Done</button>
                   </div>
                   <div class="cp-template-grid" id="cp-template-grid">
                     <!-- Templates will be inserted here -->
@@ -1636,9 +1727,54 @@
             });
           }
 
+          // ── Bulk delete ("Select to Delete") ──
+          // Only saved (custom) buttons can be picked; built-in templates are
+          // part of the extension and are shown dimmed while picking.
+          var bulkMode = false;
+          var bulkPicked = {}; // fullKey ("custom:Name") -> true
+          var bulkVisibleKeys = []; // saved buttons currently shown (search/filter aware)
+
+          function bulkPickedKeys() {
+            return Object.keys(bulkPicked).filter(function (k) {
+              return bulkPicked[k];
+            });
+          }
+
+          function updateBulkBar() {
+            var bar = modal.querySelector("#cp-bulk-bar");
+            var selectBtn = modal.querySelector("#cp-lib-select");
+            if (!bar || !selectBtn) return;
+            bar.classList.toggle("active", bulkMode);
+            selectBtn.classList.toggle("active", bulkMode);
+            selectBtn.textContent = bulkMode ? "Selecting…" : "Select to Delete";
+            var n = bulkPickedKeys().length;
+            modal.querySelector("#cp-bulk-count").textContent =
+              n + " selected" +
+              (bulkVisibleKeys.length ? " (" + bulkVisibleKeys.length + " saved shown)" : "");
+            modal.querySelector("#cp-bulk-delete").disabled = n === 0;
+            modal.querySelector("#cp-bulk-delete").textContent =
+              n > 0 ? "Delete selected (" + n + ")" : "Delete selected";
+          }
+
+          function setBulkPicked(fullKey, on) {
+            if (on) bulkPicked[fullKey] = true;
+            else delete bulkPicked[fullKey];
+            Array.prototype.forEach.call(
+              grid.querySelectorAll(".cp-template-card"),
+              function (card) {
+                if (card.dataset.templateKey !== fullKey) return;
+                card.classList.toggle("cp-bulk-picked", !!on);
+                var box = card.querySelector(".cp-bulk-check");
+                if (box) box.checked = !!on;
+              },
+            );
+            updateBulkBar();
+          }
+
           function renderTemplateGrid() {
             closeTemplateEditPopover();
             grid.innerHTML = "";
+            grid.classList.toggle("cp-bulk-mode", bulkMode);
             allTemplates = {};
             templateSource = {};
             renderTemplateFilterPopover();
@@ -1661,6 +1797,19 @@
                   templateFilterState.sortBy !== "name",
               );
             }
+
+            bulkVisibleKeys = entries
+              .filter(function (e) {
+                return e.isCustom;
+              })
+              .map(function (e) {
+                return e.fullKey;
+              });
+            // Forget picks that are no longer in the library (e.g. after a delete or import).
+            Object.keys(bulkPicked).forEach(function (k) {
+              if (!customButtonLibrary[k.replace(/^custom:/, "")]) delete bulkPicked[k];
+            });
+            updateBulkBar();
 
             if (entries.length === 0) {
               grid.innerHTML =
@@ -1760,6 +1909,28 @@
                 : "") +
               "</div>";
 
+            // Bulk delete mode: saved buttons get a checkbox, built-ins are locked.
+            if (bulkMode) {
+              if (isCustom) {
+                var pickBox = document.createElement("input");
+                pickBox.type = "checkbox";
+                pickBox.className = "cp-bulk-check";
+                pickBox.checked = !!bulkPicked[key];
+                pickBox.setAttribute("aria-label", "Select " + displayName + " for deletion");
+                pickBox.addEventListener("click", function (e) {
+                  e.stopPropagation();
+                });
+                pickBox.addEventListener("change", function () {
+                  setBulkPicked(key, pickBox.checked);
+                });
+                card.appendChild(pickBox);
+                card.classList.toggle("cp-bulk-picked", pickBox.checked);
+              } else {
+                card.classList.add("cp-bulk-locked");
+                card.title = "Built-in templates can't be deleted";
+              }
+            }
+
             // Dark background toggle — persists to storage
             var darkBtn = card.querySelector(".cp-template-darkbg");
             darkBtn.addEventListener("click", function (e) {
@@ -1780,6 +1951,11 @@
             });
 
             card.addEventListener("click", function (e) {
+              if (bulkMode) {
+                // Picking mode: a click on a saved button toggles its checkbox instead of selecting it to import.
+                if (isCustom) setBulkPicked(key, !bulkPicked[key]);
+                return;
+              }
               if (
                 e.target.classList.contains("cp-template-delete") ||
                 e.target.classList.contains("cp-template-darkbg") ||
@@ -1823,6 +1999,69 @@
           }
 
           renderTemplateGrid();
+
+          // Bulk delete controls
+          function setBulkMode(on) {
+            bulkMode = !!on;
+            bulkPicked = {};
+            if (bulkMode) {
+              // Nothing is queued for import while picking buttons to delete.
+              selectedTemplate = null;
+            }
+            renderTemplateGrid();
+            updateSubmitButton();
+          }
+
+          modal.querySelector("#cp-lib-select").addEventListener("click", function () {
+            setBulkMode(!bulkMode);
+          });
+          modal.querySelector("#cp-bulk-done").addEventListener("click", function () {
+            setBulkMode(false);
+          });
+          modal.querySelector("#cp-bulk-clear").addEventListener("click", function () {
+            bulkPicked = {};
+            renderTemplateGrid();
+          });
+          modal.querySelector("#cp-bulk-all").addEventListener("click", function () {
+            bulkVisibleKeys.forEach(function (k) {
+              bulkPicked[k] = true;
+            });
+            renderTemplateGrid();
+          });
+          modal.querySelector("#cp-bulk-delete").addEventListener("click", function () {
+            var picked = bulkPickedKeys();
+            if (!picked.length) return;
+            var preview = picked
+              .slice(0, 8)
+              .map(function (k) {
+                return "• " + k.replace(/^custom:/, "").replace(/_/g, " ");
+              })
+              .join("\n");
+            if (picked.length > 8) preview += "\n…and " + (picked.length - 8) + " more";
+            if (
+              !confirm(
+                "Delete " + picked.length + " saved button" +
+                  (picked.length === 1 ? "" : "s") + "?\n\n" + preview +
+                  "\n\nThis can't be undone. Tip: use Export Library first if you might want them back.",
+              )
+            )
+              return;
+            var rawKeys = picked.map(function (k) {
+              return k.replace(/^custom:/, "");
+            });
+            var result = buttonLibraryUtils.removeKeys(customButtonLibrary, rawKeys);
+            customButtonLibrary = result.library;
+            picked.forEach(function (k) {
+              delete darkBgToggles[k];
+            });
+            chrome.storage.local.set({
+              "cp-customButtonLibrary": customButtonLibrary,
+              "cp-darkBgToggles": darkBgToggles,
+            });
+            bulkPicked = {};
+            renderTemplateGrid();
+            updateSubmitButton();
+          });
 
           // JSON paste handling
           var textarea = modal.querySelector("#cp-paste-json");
@@ -2009,7 +2248,7 @@
             var activeTab = modal.querySelector(".cp-import-tab.active").dataset
               .tab;
             if (activeTab === "templates") {
-              submitBtn.disabled = !selectedTemplate;
+              submitBtn.disabled = bulkMode || !selectedTemplate;
               submitBtn.textContent = "Import Button";
             } else if (activeTab === "paste") {
               submitBtn.disabled = !textarea.value.trim();

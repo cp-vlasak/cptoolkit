@@ -115,6 +115,10 @@ Fancy Button library exports are versioned:
 
 Version 2 preserves `cpToolkit` metadata. Imports still accept older wrapped exports and raw `{ key: button }` objects.
 
+### Bulk Delete
+
+Both surfaces (the Import modal's Template Library tab and the full Button Library page) have a **Select to Delete** mode. Saved buttons get a checkbox, built-in templates are dimmed and cannot be picked, and a bar shows the count with Select all shown / Clear / Delete selected / Done. "Select all shown" respects the current search and filters. Deleting goes through `CPToolkitFancyButtonLibrary.removeKeys()` so both surfaces behave the same. Built-in templates live in `data/fancy-button-library.json` and are never deleted by the user.
+
 ### Preview and Asset Notes
 
 The preview builder renders HTML/CSS from the saved Fancy Button JSON. It does not need the original Graphic Link record to still exist.
