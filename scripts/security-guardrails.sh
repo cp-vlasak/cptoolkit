@@ -32,7 +32,7 @@ ALLOWED_REMOTE_HOSTS=""
 # Hosts that only appear in markup the toolkit EMITS into customer sites
 # (clipboard snippets, inserted HTML, SVG namespace) — not loaded by the
 # extension itself, but still tracked so new third parties surface in review:
-ALLOWED_SNIPPET_HOSTS="www.gstatic.com translate.google.com connect.civicplus.com www.w3.org"
+ALLOWED_SNIPPET_HOSTS="www.gstatic.com translate.google.com connect.civicplus.com www.w3.org www.facebook.com"
 
 # ---- Setup -------------------------------------------------------------
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"

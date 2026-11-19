@@ -38,6 +38,7 @@ surfaces in review.
 | `translate.google.com` | `js/tools/on-demand/copyGoogleTranslate.js`, `js/tools/on-demand/Setup default widget option sets.js` | The Google Translate widget script / link emitted into customer markup. |
 | `connect.civicplus.com` | `js/tools/on-demand/insertPoweredByHTML.js` | First-party CivicPlus referral link in the "Government Websites by CivicPlus" byline inserted into customer layouts. |
 | `www.w3.org` | `js/tools/on-demand/insertPoweredByHTML.js` | SVG `xmlns` namespace identifier in inserted markup — a constant string, **not a network request**. |
+| `www.facebook.com` | `js/tools/on-demand/facebook-feed-generator.js` | The Facebook Page plugin address written into the iframe code the Facebook Feed Generator copies to the clipboard for a Custom HTML widget. The extension never contacts Facebook itself. |
 
 
 ## Vendored (no external load)

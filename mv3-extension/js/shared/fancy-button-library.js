@@ -364,6 +364,21 @@
     });
   }
 
+  // Returns a copy of a saved-button library without the given keys, plus how
+  // many were actually removed. Only ever called with saved (custom) buttons;
+  // built-in templates live in the extension's data file and are never deleted.
+  function removeKeys(library, keys) {
+    var next = Object.assign({}, isPlainObject(library) ? library : {});
+    var removed = 0;
+    (Array.isArray(keys) ? keys : []).forEach(function(key) {
+      if (Object.prototype.hasOwnProperty.call(next, key)) {
+        delete next[key];
+        removed++;
+      }
+    });
+    return { library: next, removed: removed };
+  }
+
   function getCollapsedKey(category) {
     return normalizeLower(category || DEFAULT_CATEGORY) || "uncategorized";
   }
@@ -390,7 +405,8 @@
     getCategoryOptions: getCategoryOptions,
     getSourceOptions: getSourceOptions,
     groupEntriesByCategory: groupEntriesByCategory,
-    getCollapsedKey: getCollapsedKey
+    getCollapsedKey: getCollapsedKey,
+    removeKeys: removeKeys
   };
 
   root.CPToolkit = root.CPToolkit || {};

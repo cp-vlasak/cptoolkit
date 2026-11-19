@@ -622,10 +622,10 @@
               }
               .cp-template-card {
                 position: relative;
-                padding: 2em 0;
+                padding: 0 0 1em;
                 display: flex;
                 flex-direction: column;
-                justify-content: center;
+                justify-content: flex-start;
                 border-radius: 8px;
                 cursor: pointer;
                 transition: border-color 0.2s, box-shadow 0.2s;
@@ -638,6 +638,9 @@
                 pointer-events: none;
                 padding: 5px;
                 border: 2px solid transparent;
+                /* Titles sit at the top-left of the tile; the button is centered in the space below. */
+                margin-top: auto;
+                margin-bottom: auto;
               }
               .cp-template-card.selected .cp-template-preview {
                 border-color: #af282f;
@@ -930,11 +933,13 @@
               .cp-template-card-meta {
                 display: block;
                 align-items: center;
-                padding: 9px 58px 0 10px;
+                /* Right padding clears all three icons (edit, dark toggle, delete) with a visible gap. */
+                padding: 9px 88px 8px 10px;
                 color: #333;
                 font-size: 12px;
                 font-weight: 600;
                 min-height: 31px;
+                text-align: left;
               }
               .cp-template-card-name {
                 display: -webkit-box;
@@ -983,6 +988,85 @@
               }
               .cp-template-delete:hover {
                 color: #cc0000;
+              }
+              /* Bulk delete ("Select to Delete") mode */
+              .cp-bulk-bar {
+                display: none;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+                padding: 8px 10px;
+                background: #fbeaea;
+                border: 1px solid #e3b4b6;
+                border-radius: 6px;
+                font-size: 12px;
+                color: #333;
+              }
+              .cp-bulk-bar.active {
+                display: flex;
+              }
+              .cp-bulk-bar .cp-bulk-count {
+                font-weight: 600;
+                margin-right: auto;
+              }
+              .cp-bulk-bar button {
+                background: #fff;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 12px;
+                cursor: pointer;
+                color: #555;
+                line-height: normal !important;
+                width: auto !important;
+              }
+              .cp-bulk-bar button:hover:not(:disabled) {
+                border-color: #af282f;
+                color: #af282f;
+              }
+              .cp-bulk-bar button.cp-bulk-delete {
+                background: #af282f;
+                border-color: #af282f;
+                color: #fff;
+              }
+              .cp-bulk-bar button.cp-bulk-delete:hover:not(:disabled) {
+                background: #8f2026;
+                color: #fff;
+              }
+              .cp-bulk-bar button:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+              }
+              button#cp-lib-select.active {
+                background: #af282f;
+                border-color: #af282f;
+                color: #fff;
+              }
+              .cp-bulk-check {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 18px !important;
+                height: 18px !important;
+                margin: 0 !important;
+                cursor: pointer;
+                accent-color: #af282f;
+                z-index: 2;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card-btns {
+                display: none;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card-meta {
+                padding-right: 34px;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card.cp-bulk-locked {
+                opacity: 0.45;
+                cursor: not-allowed;
+              }
+              .cp-template-grid.cp-bulk-mode .cp-template-card.cp-bulk-picked {
+                border-color: #af282f;
+                box-shadow: 0 0 0 2px rgba(175, 40, 47, 0.35);
               }
               .cp-template-preview.cp-preview-dark {
                 background: #2a2a2a;
@@ -1157,6 +1241,7 @@
                       <button id="cp-lib-view-full" title="Open the full button library page">View Full Library</button>
                       <button id="cp-lib-import" title="Import saved buttons from a file">Import Library</button>
                       <button id="cp-lib-export" title="Export saved buttons to a file">Export Library</button>
+                      <button id="cp-lib-select" title="Pick several saved buttons and delete them at once">Select to Delete</button>
                     </div>
                     <div class="cp-library-filters">
                       <div class="cp-library-search-wrap">
@@ -1167,6 +1252,13 @@
                         <div id="cp-template-filter-popover"></div>
                       </div>
                     </div>
+                  </div>
+                  <div class="cp-bulk-bar" id="cp-bulk-bar">
+                    <span class="cp-bulk-count" id="cp-bulk-count">0 selected</span>
+                    <button type="button" id="cp-bulk-all" title="Select every saved button currently shown (respects search and filters)">Select all shown</button>
+                    <button type="button" id="cp-bulk-clear">Clear</button>
+                    <button type="button" id="cp-bulk-delete" class="cp-bulk-delete" disabled>Delete selected</button>
+                    <button type="button" id="cp-bulk-done">Done</button>
                   </div>
                   <div class="cp-template-grid" id="cp-template-grid">
                     <!-- Templates will be inserted here -->
@@ -1636,9 +1728,54 @@
             });
           }
 
+          // ── Bulk delete ("Select to Delete") ──
+          // Only saved (custom) buttons can be picked; built-in templates are
+          // part of the extension and are shown dimmed while picking.
+          var bulkMode = false;
+          var bulkPicked = {}; // fullKey ("custom:Name") -> true
+          var bulkVisibleKeys = []; // saved buttons currently shown (search/filter aware)
+
+          function bulkPickedKeys() {
+            return Object.keys(bulkPicked).filter(function (k) {
+              return bulkPicked[k];
+            });
+          }
+
+          function updateBulkBar() {
+            var bar = modal.querySelector("#cp-bulk-bar");
+            var selectBtn = modal.querySelector("#cp-lib-select");
+            if (!bar || !selectBtn) return;
+            bar.classList.toggle("active", bulkMode);
+            selectBtn.classList.toggle("active", bulkMode);
+            selectBtn.textContent = bulkMode ? "Selecting…" : "Select to Delete";
+            var n = bulkPickedKeys().length;
+            modal.querySelector("#cp-bulk-count").textContent =
+              n + " selected" +
+              (bulkVisibleKeys.length ? " (" + bulkVisibleKeys.length + " saved shown)" : "");
+            modal.querySelector("#cp-bulk-delete").disabled = n === 0;
+            modal.querySelector("#cp-bulk-delete").textContent =
+              n > 0 ? "Delete selected (" + n + ")" : "Delete selected";
+          }
+
+          function setBulkPicked(fullKey, on) {
+            if (on) bulkPicked[fullKey] = true;
+            else delete bulkPicked[fullKey];
+            Array.prototype.forEach.call(
+              grid.querySelectorAll(".cp-template-card"),
+              function (card) {
+                if (card.dataset.templateKey !== fullKey) return;
+                card.classList.toggle("cp-bulk-picked", !!on);
+                var box = card.querySelector(".cp-bulk-check");
+                if (box) box.checked = !!on;
+              },
+            );
+            updateBulkBar();
+          }
+
           function renderTemplateGrid() {
             closeTemplateEditPopover();
             grid.innerHTML = "";
+            grid.classList.toggle("cp-bulk-mode", bulkMode);
             allTemplates = {};
             templateSource = {};
             renderTemplateFilterPopover();
@@ -1661,6 +1798,19 @@
                   templateFilterState.sortBy !== "name",
               );
             }
+
+            bulkVisibleKeys = entries
+              .filter(function (e) {
+                return e.isCustom;
+              })
+              .map(function (e) {
+                return e.fullKey;
+              });
+            // Forget picks that are no longer in the library (e.g. after a delete or import).
+            Object.keys(bulkPicked).forEach(function (k) {
+              if (!customButtonLibrary[k.replace(/^custom:/, "")]) delete bulkPicked[k];
+            });
+            updateBulkBar();
 
             if (entries.length === 0) {
               grid.innerHTML =
@@ -1728,7 +1878,9 @@
               .replace(/^(custom|builtin):/, "")
               .replace(/_/g, " ");
 
-            var preview = buildFancyButtonPreview(template, isCustom ? null : displayName);
+            // Built-ins that define previewText (the Standard set) get their name shown as the label;
+            // built-ins without it, like the Design System buttons, keep their own text (e.g. "Link Name").
+            var preview = buildFancyButtonPreview(template, isCustom || !template.previewText ? null : displayName);
 
             // Check persisted dark bg state, default Standard_5 to dark
             var isDark = darkBgToggles[key];
@@ -1760,6 +1912,28 @@
                 : "") +
               "</div>";
 
+            // Bulk delete mode: saved buttons get a checkbox, built-ins are locked.
+            if (bulkMode) {
+              if (isCustom) {
+                var pickBox = document.createElement("input");
+                pickBox.type = "checkbox";
+                pickBox.className = "cp-bulk-check";
+                pickBox.checked = !!bulkPicked[key];
+                pickBox.setAttribute("aria-label", "Select " + displayName + " for deletion");
+                pickBox.addEventListener("click", function (e) {
+                  e.stopPropagation();
+                });
+                pickBox.addEventListener("change", function () {
+                  setBulkPicked(key, pickBox.checked);
+                });
+                card.appendChild(pickBox);
+                card.classList.toggle("cp-bulk-picked", pickBox.checked);
+              } else {
+                card.classList.add("cp-bulk-locked");
+                card.title = "Built-in templates can't be deleted";
+              }
+            }
+
             // Dark background toggle — persists to storage
             var darkBtn = card.querySelector(".cp-template-darkbg");
             darkBtn.addEventListener("click", function (e) {
@@ -1780,6 +1954,11 @@
             });
 
             card.addEventListener("click", function (e) {
+              if (bulkMode) {
+                // Picking mode: a click on a saved button toggles its checkbox instead of selecting it to import.
+                if (isCustom) setBulkPicked(key, !bulkPicked[key]);
+                return;
+              }
               if (
                 e.target.classList.contains("cp-template-delete") ||
                 e.target.classList.contains("cp-template-darkbg") ||
@@ -1823,6 +2002,69 @@
           }
 
           renderTemplateGrid();
+
+          // Bulk delete controls
+          function setBulkMode(on) {
+            bulkMode = !!on;
+            bulkPicked = {};
+            if (bulkMode) {
+              // Nothing is queued for import while picking buttons to delete.
+              selectedTemplate = null;
+            }
+            renderTemplateGrid();
+            updateSubmitButton();
+          }
+
+          modal.querySelector("#cp-lib-select").addEventListener("click", function () {
+            setBulkMode(!bulkMode);
+          });
+          modal.querySelector("#cp-bulk-done").addEventListener("click", function () {
+            setBulkMode(false);
+          });
+          modal.querySelector("#cp-bulk-clear").addEventListener("click", function () {
+            bulkPicked = {};
+            renderTemplateGrid();
+          });
+          modal.querySelector("#cp-bulk-all").addEventListener("click", function () {
+            bulkVisibleKeys.forEach(function (k) {
+              bulkPicked[k] = true;
+            });
+            renderTemplateGrid();
+          });
+          modal.querySelector("#cp-bulk-delete").addEventListener("click", function () {
+            var picked = bulkPickedKeys();
+            if (!picked.length) return;
+            var preview = picked
+              .slice(0, 8)
+              .map(function (k) {
+                return "• " + k.replace(/^custom:/, "").replace(/_/g, " ");
+              })
+              .join("\n");
+            if (picked.length > 8) preview += "\n…and " + (picked.length - 8) + " more";
+            if (
+              !confirm(
+                "Delete " + picked.length + " saved button" +
+                  (picked.length === 1 ? "" : "s") + "?\n\n" + preview +
+                  "\n\nThis can't be undone. Tip: use Export Library first if you might want them back.",
+              )
+            )
+              return;
+            var rawKeys = picked.map(function (k) {
+              return k.replace(/^custom:/, "");
+            });
+            var result = buttonLibraryUtils.removeKeys(customButtonLibrary, rawKeys);
+            customButtonLibrary = result.library;
+            picked.forEach(function (k) {
+              delete darkBgToggles[k];
+            });
+            chrome.storage.local.set({
+              "cp-customButtonLibrary": customButtonLibrary,
+              "cp-darkBgToggles": darkBgToggles,
+            });
+            bulkPicked = {};
+            renderTemplateGrid();
+            updateSubmitButton();
+          });
 
           // JSON paste handling
           var textarea = modal.querySelector("#cp-paste-json");
@@ -2009,7 +2251,7 @@
             var activeTab = modal.querySelector(".cp-import-tab.active").dataset
               .tab;
             if (activeTab === "templates") {
-              submitBtn.disabled = !selectedTemplate;
+              submitBtn.disabled = bulkMode || !selectedTemplate;
               submitBtn.textContent = "Import Button";
             } else if (activeTab === "paste") {
               submitBtn.disabled = !textarea.value.trim();
@@ -3055,6 +3297,177 @@
           );
         }
 
+        // Split a selector list on top-level commas only (not inside (), []
+        // or quotes).
+        function splitSelectorListSafe(prelude) {
+          var parts = [];
+          var depth = 0;
+          var quote = "";
+          var start = 0;
+          for (var i = 0; i < prelude.length; i++) {
+            var ch = prelude.charAt(i);
+            if (quote) {
+              if (ch === "\\") i++;
+              else if (ch === quote) quote = "";
+            } else if (ch === '"' || ch === "'") quote = ch;
+            else if (ch === "(" || ch === "[") depth++;
+            else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+            else if (ch === "," && depth === 0) {
+              parts.push(prelude.slice(start, i));
+              start = i + 1;
+            }
+          }
+          parts.push(prelude.slice(start));
+          return parts;
+        }
+
+        // Blank out the inside of (), [] and quotes so a token search only
+        // sees the selector's top level.
+        function maskNested(sel) {
+          var out = "";
+          var depth = 0;
+          var quote = "";
+          for (var i = 0; i < sel.length; i++) {
+            var ch = sel.charAt(i);
+            if (quote) {
+              if (ch === "\\") {
+                out += "  ";
+                i++;
+                continue;
+              }
+              if (ch === quote) quote = "";
+              out += " ";
+            } else if (ch === '"' || ch === "'") {
+              quote = ch;
+              out += " ";
+            } else if (ch === "(" || ch === "[") {
+              depth++;
+              out += depth === 1 ? ch : " ";
+            } else if (ch === ")" || ch === "]") {
+              depth = Math.max(0, depth - 1);
+              out += depth === 0 ? ch : " ";
+            } else out += depth > 0 ? " " : ch;
+          }
+          return out;
+        }
+
+        // For every rule whose selector list has a top-level ".fancyButton1"
+        // selector, add the same selector with the real ID right after it
+        // (".fancyButton1 X" becomes ".fancyButton1 X, .fancyButtonN X").
+        // Rules that already contain the twin are left alone.
+        function addRealIdTwinsToCss(css, newId) {
+          var out = "";
+          var prelude = "";
+          var i = 0;
+          var n = css.length;
+          while (i < n) {
+            var ch = css.charAt(i);
+            if (ch === "/" && css.charAt(i + 1) === "*") {
+              var endC = css.indexOf("*/", i + 2);
+              endC = endC === -1 ? n : endC + 2;
+              prelude += css.slice(i, endC);
+              i = endC;
+            } else if (ch === "}") {
+              out += prelude + ch;
+              prelude = "";
+              i++;
+            } else if (ch === "{") {
+              var isAtRule = /^\s*@/.test(prelude);
+              out += twinPrelude(prelude, newId) + ch;
+              prelude = "";
+              i++;
+              if (!isAtRule) {
+                // copy the declaration body up to its closing brace
+                var depth = 1;
+                var q = "";
+                var bodyStart = i;
+                while (i < n && depth > 0) {
+                  var c = css.charAt(i);
+                  if (q) {
+                    if (c === "\\") i++;
+                    else if (c === q) q = "";
+                  } else if (c === '"' || c === "'") q = c;
+                  else if (c === "{") depth++;
+                  else if (c === "}") depth--;
+                  i++;
+                }
+                out += css.slice(bodyStart, i);
+              }
+            } else {
+              prelude += ch;
+              i++;
+            }
+          }
+          return out + prelude;
+        }
+
+        function twinPrelude(prelude, newId) {
+          if (/^\s*@/.test(prelude)) return prelude;
+          var parts = splitSelectorListSafe(prelude);
+          // A copied button can still carry the ID it had on its source
+          // site (e.g. ".fancyButton1596 X" next to ".fancyButton1 X").
+          // That ID means nothing here: fold it into the .fancyButton1
+          // placeholder, drop the duplicate, then add this button's own ID.
+          var norm = function (s) {
+            return s.replace(/\s+/g, " ").trim();
+          };
+          var folded = [];
+          var seenFolded = {};
+          var staleFound = false;
+          parts.forEach(function (p) {
+            var m = maskNested(p);
+            var q = p;
+            var isOwn = function (num) {
+              return num === "1" || num === String(newId);
+            };
+            if (
+              m.replace(/\.fancyButton([0-9]+)/g, function (all, num) {
+                return isOwn(num) ? "" : "!";
+              }).indexOf("!") !== -1
+            ) {
+              staleFound = true;
+              q = p.replace(/\.fancyButton([0-9]+)/g, function (all, num) {
+                return isOwn(num) ? all : ".fancyButton1";
+              });
+            }
+            if (seenFolded[norm(q)]) return;
+            seenFolded[norm(q)] = true;
+            folded.push(q);
+          });
+          parts = folded;
+          var have = {};
+          parts.forEach(function (p) {
+            have[p.replace(/\s+/g, " ").trim()] = true;
+          });
+          var changed = staleFound;
+          var result = "";
+          parts.forEach(function (p, idx) {
+            result += (idx ? "," : "") + p;
+            if (!/\.fancyButton1(?![0-9])/.test(maskNested(p))) return;
+            var twin = p.replace(
+              /\.fancyButton1(?![0-9])/g,
+              ".fancyButton" + newId,
+            );
+            if (have[twin.replace(/\s+/g, " ").trim()]) return;
+            var lead = /^\s*/.exec(p)[0];
+            lead = lead.indexOf("\n") !== -1 ? "\n" : lead || " ";
+            var trail = /\s*$/.exec(p)[0];
+            result =
+              result.slice(0, result.length - trail.length) +
+              "," +
+              lead +
+              twin.trim() +
+              trail;
+            changed = true;
+          });
+          if (!changed) return prelude;
+          // Keep the original gap before the "{" even when the last
+          // selector in the list was one that got folded away.
+          var origTrail = /\s*$/.exec(prelude)[0];
+          if (origTrail && !/\s$/.test(result)) result += origTrail;
+          return result;
+        }
+
         function applyFancyButtonSelectorFix(payload, oldId, newId) {
           // ".fancyButton1" is a permanent, reserved placeholder class the
           // CMS's own Fancy Button Builder always renders the button being
@@ -3112,17 +3525,13 @@
             // distribute a trailing selector across comma-separated
             // alternatives. Same reasoning as above: build the global
             // regex fresh per string instead of reusing one across the loop.
+            // The split must ignore commas inside parentheses, brackets and
+            // strings: ":is(:hover, :focus, :active)" has commas that are
+            // NOT selector separators, and splitting there produced
+            // broken selectors like ".fancyButton1:is(:hover, .fancyButtonN...".
             (payload.styles || []).forEach(function (style) {
               if (typeof style.Value !== "string") return;
-              var placeholderPattern = /\.fancyButton1(?![0-9])([^,{}]*)/g;
-              var next = style.Value.replace(
-                placeholderPattern,
-                function (match, tail) {
-                  return (
-                    ".fancyButton1" + tail + ", .fancyButton" + newId + tail
-                  );
-                },
-              );
+              var next = addRealIdTwinsToCss(style.Value, newId);
               if (next !== style.Value) {
                 style.Value = next;
                 changed = true;

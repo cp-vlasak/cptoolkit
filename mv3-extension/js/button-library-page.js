@@ -363,6 +363,80 @@
     btn.classList.toggle("active", hasFilters);
   }
 
+  // ==================== BULK DELETE ====================
+  // "Select to Delete" mode: saved buttons get a checkbox; built-in templates
+  // are part of the extension, so they are shown dimmed and can't be picked.
+
+  var bulkMode = false;
+  var bulkPicked = {}; // saved button key -> true
+  var bulkVisibleKeys = []; // saved buttons currently shown (search/filter aware)
+
+  function bulkPickedKeys() {
+    return Object.keys(bulkPicked).filter(function (k) {
+      return bulkPicked[k];
+    });
+  }
+
+  function updateBulkBar() {
+    var bar = document.getElementById("bulk-bar");
+    var selectBtn = document.getElementById("btn-select");
+    if (!bar || !selectBtn) return;
+    bar.classList.toggle("active", bulkMode);
+    selectBtn.classList.toggle("active", bulkMode);
+    var n = bulkPickedKeys().length;
+    document.getElementById("bulk-count").textContent =
+      n + " selected" +
+      (bulkVisibleKeys.length ? " (" + bulkVisibleKeys.length + " saved shown)" : "");
+    var del = document.getElementById("bulk-delete");
+    del.disabled = n === 0;
+    del.textContent = n > 0 ? "Delete selected (" + n + ")" : "Delete selected";
+  }
+
+  function setBulkPicked(key, on) {
+    if (on) bulkPicked[key] = true;
+    else delete bulkPicked[key];
+    Array.prototype.forEach.call(
+      document.querySelectorAll("#buttons-grid .cp-template-card"),
+      function (card) {
+        if (card.getAttribute("data-key") !== key || card.classList.contains("bulk-locked")) return;
+        card.classList.toggle("bulk-picked", !!on);
+        var box = card.querySelector(".bulk-check");
+        if (box) box.checked = !!on;
+      }
+    );
+    updateBulkBar();
+  }
+
+  function setBulkMode(on) {
+    bulkMode = !!on;
+    bulkPicked = {};
+    renderButtons();
+  }
+
+  function deleteBulkPicked() {
+    var picked = bulkPickedKeys();
+    if (!picked.length) return;
+    var preview = picked
+      .slice(0, 8)
+      .map(function (k) { return "• " + formatName(k); })
+      .join("\n");
+    if (picked.length > 8) preview += "\n…and " + (picked.length - 8) + " more";
+    if (
+      !confirm(
+        "Delete " + picked.length + " saved button" + (picked.length === 1 ? "" : "s") +
+          "?\n\n" + preview +
+          "\n\nThis can't be undone. Tip: use Export first if you might want them back."
+      )
+    ) return;
+
+    var result = library.removeKeys(customLibrary, picked);
+    customLibrary = result.library;
+    picked.forEach(function (k) { delete darkBgToggles["custom:" + k]; });
+    chrome.storage.local.set({ "cp-darkBgToggles": darkBgToggles });
+    bulkPicked = {};
+    saveCustomLibrary(renderButtons);
+  }
+
   // ==================== CARD BUILDER ====================
 
   function buildCard(entry) {
@@ -372,6 +446,24 @@
     var card = document.createElement("div");
     card.className = "cp-template-card";
     card.setAttribute("data-key", key);
+
+    if (bulkMode) {
+      if (isCustom) {
+        var pickBox = document.createElement("input");
+        pickBox.type = "checkbox";
+        pickBox.className = "bulk-check";
+        pickBox.checked = !!bulkPicked[key];
+        pickBox.setAttribute("aria-label", "Select " + entry.name + " for deletion");
+        pickBox.addEventListener("click", function (e) { e.stopPropagation(); });
+        pickBox.addEventListener("change", function () { setBulkPicked(key, pickBox.checked); });
+        card.appendChild(pickBox);
+        card.classList.toggle("bulk-picked", pickBox.checked);
+        card.addEventListener("click", function () { setBulkPicked(key, !bulkPicked[key]); });
+      } else {
+        card.classList.add("bulk-locked");
+        card.title = "Built-in templates can't be deleted";
+      }
+    }
 
     // Preview area
     var previewResult = buildFancyButtonPreview(template);
@@ -588,6 +680,14 @@
     grid.innerHTML = "";
 
     var entries = getVisibleEntries();
+    bulkVisibleKeys = entries
+      .filter(function (e) { return e.isCustom; })
+      .map(function (e) { return e.key; });
+    // Forget picks that are no longer in the library (e.g. after a delete or import).
+    Object.keys(bulkPicked).forEach(function (k) {
+      if (!Object.prototype.hasOwnProperty.call(customLibrary, k)) delete bulkPicked[k];
+    });
+    updateBulkBar();
     renderFilterPopover();
     updateFilterButtonState();
     document
@@ -602,7 +702,8 @@
     emptyState.style.display = "none";
     grid.className =
       (currentView === "grid" ? "view-grid" : "view-list") +
-      (filterState.groupByCategory ? " grouped-by-category" : "");
+      (filterState.groupByCategory ? " grouped-by-category" : "") +
+      (bulkMode ? " bulk-mode" : "");
 
     if (filterState.groupByCategory) {
       library.groupEntriesByCategory(entries).forEach(function(group) {
@@ -1078,6 +1179,23 @@
     document
       .getElementById("btn-export")
       .addEventListener("click", exportLibrary);
+
+    // Bulk delete
+    document.getElementById("btn-select").addEventListener("click", function () {
+      setBulkMode(!bulkMode);
+    });
+    document.getElementById("bulk-done").addEventListener("click", function () {
+      setBulkMode(false);
+    });
+    document.getElementById("bulk-clear").addEventListener("click", function () {
+      bulkPicked = {};
+      renderButtons();
+    });
+    document.getElementById("bulk-all").addEventListener("click", function () {
+      bulkVisibleKeys.forEach(function (k) { bulkPicked[k] = true; });
+      renderButtons();
+    });
+    document.getElementById("bulk-delete").addEventListener("click", deleteBulkPicked);
 
     // Search
     var searchInput = document.getElementById("search-input");

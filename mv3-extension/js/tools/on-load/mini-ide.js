@@ -4063,8 +4063,13 @@
         const key = function(s) { return String(s).replace(/\s+/g, ' ').trim(); };
         const have = new Set(selectors.map(key));
         for (const sel of selectors) {
-            if (topLevelFancyButtonNums(sel).length === 0) continue;
-            const placeholder = mapTopLevelFancyButtonTokens(sel, function() { return '1'; });
+            const nums = topLevelFancyButtonNums(sel);
+            if (nums.length === 0) continue;
+            // A leftover ID from another button (e.g. .fancyButton1596 on
+            // button 67, common after importing a default) is stale even
+            // though the placeholder and real twins exist.
+            if (nums.some(function(n) { return n !== '1' && n !== numOnly; })) return true;
+            const placeholder =mapTopLevelFancyButtonTokens(sel, function() { return '1'; });
             const real = mapTopLevelFancyButtonTokens(sel, function() { return numOnly; });
             if (!have.has(key(placeholder)) || !have.has(key(real))) return true;
         }

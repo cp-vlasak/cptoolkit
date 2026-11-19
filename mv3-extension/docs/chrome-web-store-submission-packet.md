@@ -1,22 +1,22 @@
 # Chrome Web Store Submission Packet
 
-Last updated: 2026-11-12
+Last updated: 2026-11-19
 
 Purpose: keep the upload/review notes for the MV3 Web Store readiness submission in the repo.
 
 ## Package
 
 - Extension name: `CivicPlus Internal Toolkit`
-- Submission version: `1.2.2` (emergency patch on top of `1.2.1`, which was merged to `main` on 2026-10-26; if `1.2.0` or `1.2.1` is still pending review in the dashboard, cancel it and upload this package in its place; last shipped version before the 1.2.x line: `1.1.71`)
+- Submission version: `1.3.0` (feature release on top of `1.2.2`, which was approved by the Chrome Web Store; last shipped version before the 1.2.x line: `1.1.71`)
 - Source folder: `mv3-extension`
 - Local unpacked test folder: the same `mv3-extension` source folder
 - Production build folder: none; the Store package is assembled directly from the tested source tree
-- Upload artifact: `mv3-extension/dist/civicplus-internal-toolkit-1.2.2.zip`
-- Verified size: 2,246,852 bytes
-- Verified runtime file count: 191
-- SHA-256: `61A52D304BC4F36DD3EA9ABC9EDBB985E5478B31313E7A822856F4074B367C4F`
+- Upload artifact: `mv3-extension/dist/civicplus-internal-toolkit-1.3.0.zip`
+- Verified size: 2,275,656 bytes
+- Verified runtime file count: 209
+- SHA-256: `74F6A44D7A7C086F73B5D2359D16D7626206BC7A698B09A56A557F841D62C36A`
 - Privacy policy URL: `https://cp-vlasak.github.io/cptoolkit/privacy.html`
-- Submission type: update to the existing Chrome Web Store item. Compared with 1.1.71, the 1.2.x line adds one permission, `declarativeContent` (green toolbar dot on CivicPlus-looking pages); 1.2.2 adds no permissions or manifest changes beyond the version number. The justification is in the permissions section below.
+- Submission type: update to the existing Chrome Web Store item. Compared with 1.1.71, the 1.2.x line adds one permission, `declarativeContent` (green toolbar dot on CivicPlus-looking pages); 1.3.0 adds no permissions or manifest changes beyond the version number. The justification is in the permissions section below.
 
 ## Single Purpose
 
@@ -66,13 +66,15 @@ If the dashboard asks for data categories, review carefully with the final priva
 
 1. Confirm local QA by loading the source-of-truth `mv3-extension` folder unpacked.
 2. Run release checks and guardrails.
-3. Create `mv3-extension/dist/civicplus-internal-toolkit-1.2.2.zip` directly from the tested source tree, including only `manifest.json`, `css/`, `data/`, `html/`, `images/`, `js/`, and `socials/`.
-4. Verify `manifest.json` is at the ZIP root, the packaged version is `1.2.2`, and every packaged file matches the source tree.
+3. Create `mv3-extension/dist/civicplus-internal-toolkit-1.3.0.zip` directly from the tested source tree, including only `manifest.json`, `css/`, `data/`, `html/`, `images/`, `js/`, and `socials/`.
+4. Verify `manifest.json` is at the ZIP root, the packaged version is `1.3.0`, and every packaged file matches the source tree.
 5. Upload the ZIP in Chrome Developer Dashboard.
 6. Review Package, Store Listing, Privacy Practices, and Distribution tabs.
 7. Submit for review.
 
-The artifact above was assembled and byte-compared against the source tree on 2026-11-12. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
+The artifact above was assembled and byte-compared against the source tree on 2026-11-19. If any runtime source file changes during acceptance testing, rebuild the ZIP and replace the size, file count, and SHA-256 recorded here.
+
+Version 1.3.0 is a feature release on top of 1.2.2: (1) a new on-demand tool, Facebook Feed Generator (`js/tools/on-demand/facebook-feed-generator.js`, registered in `data/on-demand-tools.json`), builds an iframe, style and resize script for a Facebook Page and copies them to the clipboard for pasting into a Custom HTML widget; the extension itself makes no network request to Facebook and the iframe host `www.facebook.com` was added to the emitted-snippet allowlist in `scripts/security-guardrails.sh` and `docs/external-dependencies.md`; (2) the 14 Design System fancy buttons were added as built-ins in `data/fancy-button-library.json` with 17 SVGs under `images/templates/design-system/`; (3) bulk delete of saved buttons in the Import Fancy Button modal and on the Button Library page; (4) Apply Saved Skin lets the user choose which components to apply; (5) fixes to how an imported fancy button's selectors are written (hover selectors were cut in half) and to the Fancy Button Builder's selector status badge. No permissions or manifest fields changed apart from the version number in `manifest.json`, which is also in the `js/background/service-worker.js` header, plus the new changelog entry. The runtime file list adds 18 files (the tool script and the 17 SVGs) to the 1.2.2 list. The manifest-scope guardrail check could not run here because Node is not installed; the other five guardrail checks pass. Local unpacked acceptance testing for 1.3.0 is pending with the release owner; do not upload until it passes.
 
 Version 1.2.2 is a patch on top of 1.2.1 with three changes: (1) the Setup Mega Menu on-demand tool is registered again in `data/on-demand-tools.json` and its script was reworked (one dialog for the skin and column count; it reads each menu's current settings from the page and reports problems); (2) the skin copy screens use polling and shorter completion timings instead of fixed waits (`skin-operation-overlay-helper.js`, `fix-copied-skin-references-helper.js`, `copy-multiple-skins.js`); (3) the Calendar Wrapper miscellaneous styles on the four grid calendar skin defaults (Calendar Grid Default, Boxes, Colored, Rounded Weekdays) in `data/saved-skins.json` were revised (equal-width day columns, a flex `.calendarInnerWrapper` when the widget has media on the left or right, and `flex: 1` on the media text blocks). No permissions or manifest fields changed apart from the version number in `manifest.json`, which is also in the `js/background/service-worker.js` header, plus the new changelog entry. The runtime file list is identical to 1.2.1. Local unpacked acceptance testing for 1.2.2 was done by the release owner on 2026-11-12.
 
