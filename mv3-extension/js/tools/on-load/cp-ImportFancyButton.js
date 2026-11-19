@@ -3297,6 +3297,177 @@
           );
         }
 
+        // Split a selector list on top-level commas only (not inside (), []
+        // or quotes).
+        function splitSelectorListSafe(prelude) {
+          var parts = [];
+          var depth = 0;
+          var quote = "";
+          var start = 0;
+          for (var i = 0; i < prelude.length; i++) {
+            var ch = prelude.charAt(i);
+            if (quote) {
+              if (ch === "\\") i++;
+              else if (ch === quote) quote = "";
+            } else if (ch === '"' || ch === "'") quote = ch;
+            else if (ch === "(" || ch === "[") depth++;
+            else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+            else if (ch === "," && depth === 0) {
+              parts.push(prelude.slice(start, i));
+              start = i + 1;
+            }
+          }
+          parts.push(prelude.slice(start));
+          return parts;
+        }
+
+        // Blank out the inside of (), [] and quotes so a token search only
+        // sees the selector's top level.
+        function maskNested(sel) {
+          var out = "";
+          var depth = 0;
+          var quote = "";
+          for (var i = 0; i < sel.length; i++) {
+            var ch = sel.charAt(i);
+            if (quote) {
+              if (ch === "\\") {
+                out += "  ";
+                i++;
+                continue;
+              }
+              if (ch === quote) quote = "";
+              out += " ";
+            } else if (ch === '"' || ch === "'") {
+              quote = ch;
+              out += " ";
+            } else if (ch === "(" || ch === "[") {
+              depth++;
+              out += depth === 1 ? ch : " ";
+            } else if (ch === ")" || ch === "]") {
+              depth = Math.max(0, depth - 1);
+              out += depth === 0 ? ch : " ";
+            } else out += depth > 0 ? " " : ch;
+          }
+          return out;
+        }
+
+        // For every rule whose selector list has a top-level ".fancyButton1"
+        // selector, add the same selector with the real ID right after it
+        // (".fancyButton1 X" becomes ".fancyButton1 X, .fancyButtonN X").
+        // Rules that already contain the twin are left alone.
+        function addRealIdTwinsToCss(css, newId) {
+          var out = "";
+          var prelude = "";
+          var i = 0;
+          var n = css.length;
+          while (i < n) {
+            var ch = css.charAt(i);
+            if (ch === "/" && css.charAt(i + 1) === "*") {
+              var endC = css.indexOf("*/", i + 2);
+              endC = endC === -1 ? n : endC + 2;
+              prelude += css.slice(i, endC);
+              i = endC;
+            } else if (ch === "}") {
+              out += prelude + ch;
+              prelude = "";
+              i++;
+            } else if (ch === "{") {
+              var isAtRule = /^\s*@/.test(prelude);
+              out += twinPrelude(prelude, newId) + ch;
+              prelude = "";
+              i++;
+              if (!isAtRule) {
+                // copy the declaration body up to its closing brace
+                var depth = 1;
+                var q = "";
+                var bodyStart = i;
+                while (i < n && depth > 0) {
+                  var c = css.charAt(i);
+                  if (q) {
+                    if (c === "\\") i++;
+                    else if (c === q) q = "";
+                  } else if (c === '"' || c === "'") q = c;
+                  else if (c === "{") depth++;
+                  else if (c === "}") depth--;
+                  i++;
+                }
+                out += css.slice(bodyStart, i);
+              }
+            } else {
+              prelude += ch;
+              i++;
+            }
+          }
+          return out + prelude;
+        }
+
+        function twinPrelude(prelude, newId) {
+          if (/^\s*@/.test(prelude)) return prelude;
+          var parts = splitSelectorListSafe(prelude);
+          // A copied button can still carry the ID it had on its source
+          // site (e.g. ".fancyButton1596 X" next to ".fancyButton1 X").
+          // That ID means nothing here: fold it into the .fancyButton1
+          // placeholder, drop the duplicate, then add this button's own ID.
+          var norm = function (s) {
+            return s.replace(/\s+/g, " ").trim();
+          };
+          var folded = [];
+          var seenFolded = {};
+          var staleFound = false;
+          parts.forEach(function (p) {
+            var m = maskNested(p);
+            var q = p;
+            var isOwn = function (num) {
+              return num === "1" || num === String(newId);
+            };
+            if (
+              m.replace(/\.fancyButton([0-9]+)/g, function (all, num) {
+                return isOwn(num) ? "" : "!";
+              }).indexOf("!") !== -1
+            ) {
+              staleFound = true;
+              q = p.replace(/\.fancyButton([0-9]+)/g, function (all, num) {
+                return isOwn(num) ? all : ".fancyButton1";
+              });
+            }
+            if (seenFolded[norm(q)]) return;
+            seenFolded[norm(q)] = true;
+            folded.push(q);
+          });
+          parts = folded;
+          var have = {};
+          parts.forEach(function (p) {
+            have[p.replace(/\s+/g, " ").trim()] = true;
+          });
+          var changed = staleFound;
+          var result = "";
+          parts.forEach(function (p, idx) {
+            result += (idx ? "," : "") + p;
+            if (!/\.fancyButton1(?![0-9])/.test(maskNested(p))) return;
+            var twin = p.replace(
+              /\.fancyButton1(?![0-9])/g,
+              ".fancyButton" + newId,
+            );
+            if (have[twin.replace(/\s+/g, " ").trim()]) return;
+            var lead = /^\s*/.exec(p)[0];
+            lead = lead.indexOf("\n") !== -1 ? "\n" : lead || " ";
+            var trail = /\s*$/.exec(p)[0];
+            result =
+              result.slice(0, result.length - trail.length) +
+              "," +
+              lead +
+              twin.trim() +
+              trail;
+            changed = true;
+          });
+          if (!changed) return prelude;
+          // Keep the original gap before the "{" even when the last
+          // selector in the list was one that got folded away.
+          var origTrail = /\s*$/.exec(prelude)[0];
+          if (origTrail && !/\s$/.test(result)) result += origTrail;
+          return result;
+        }
+
         function applyFancyButtonSelectorFix(payload, oldId, newId) {
           // ".fancyButton1" is a permanent, reserved placeholder class the
           // CMS's own Fancy Button Builder always renders the button being
@@ -3354,17 +3525,13 @@
             // distribute a trailing selector across comma-separated
             // alternatives. Same reasoning as above: build the global
             // regex fresh per string instead of reusing one across the loop.
+            // The split must ignore commas inside parentheses, brackets and
+            // strings: ":is(:hover, :focus, :active)" has commas that are
+            // NOT selector separators, and splitting there produced
+            // broken selectors like ".fancyButton1:is(:hover, .fancyButtonN...".
             (payload.styles || []).forEach(function (style) {
               if (typeof style.Value !== "string") return;
-              var placeholderPattern = /\.fancyButton1(?![0-9])([^,{}]*)/g;
-              var next = style.Value.replace(
-                placeholderPattern,
-                function (match, tail) {
-                  return (
-                    ".fancyButton1" + tail + ", .fancyButton" + newId + tail
-                  );
-                },
-              );
+              var next = addRealIdTwinsToCss(style.Value, newId);
               if (next !== style.Value) {
                 style.Value = next;
                 changed = true;
