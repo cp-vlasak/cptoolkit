@@ -1871,6 +1871,38 @@
                     font-size: 12px;
                     color: #666;
                 }
+                .apply-skin-parts { margin-top: 14px; }
+                .apply-skin-parts-head {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    margin-bottom: 8px;
+                }
+                .apply-skin-parts-title { font-weight: 600; font-size: 13px; }
+                .apply-skin-parts-count { font-size: 12px; color: #666; margin-right: auto; }
+                .apply-skin-parts-head button {
+                    background: none;
+                    border: 0;
+                    padding: 2px 4px;
+                    color: #1976d2;
+                    font-size: 12px;
+                    text-decoration: underline;
+                    cursor: pointer;
+                }
+                .apply-skin-group {
+                    margin: 0 0 8px;
+                    padding: 6px 10px 8px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                }
+                .apply-skin-group legend { font-size: 12px; font-weight: 600; padding: 0 4px; }
+                .apply-skin-group legend label { cursor: pointer; }
+                .apply-skin-comp {
+                    display: inline-block;
+                    margin: 2px 14px 2px 0;
+                    font-size: 12px;
+                    cursor: pointer;
+                }
                 .snippet-modal-warning {
                     margin-top: 12px;
                     padding: 10px;
@@ -3356,6 +3388,32 @@
             const escapedSavedSkinName = escapeHtml(savedSkinData.name || savedSkinKey);
             const escapedSourceInfo = escapeHtml(sourceInfo);
 
+            // Component checklist: pick only the parts of the skin to apply
+            // (e.g. just the calendar pieces). Grouped by the skin view the
+            // component belongs to. Everything starts ticked, so the default
+            // behavior is unchanged.
+            const VIEW_LABELS = { items: 'Items', tabbed: 'Tabbed', columns: 'Columns', calendar: 'Calendar' };
+            const VIEW_ORDER = ['items', 'tabbed', 'columns', 'calendar'];
+            const savedComponentList = savedSkinData.components || [];
+            const componentGroups = {};
+            savedComponentList.forEach(function(c) {
+                var view = VIEW_LABELS[c.view] ? c.view : 'items';
+                (componentGroups[view] = componentGroups[view] || []).push(c);
+            });
+            const componentChecklistHtml = VIEW_ORDER.filter(function(v) {
+                return componentGroups[v] && componentGroups[v].length;
+            }).map(function(v) {
+                return '<fieldset class="apply-skin-group" data-view="' + v + '">' +
+                    '<legend><label><input type="checkbox" class="apply-skin-group-check" data-view="' + v + '" checked> ' +
+                    escapeHtml(VIEW_LABELS[v]) + '</label></legend>' +
+                    componentGroups[v].map(function(c) {
+                        return '<label class="apply-skin-comp"><input type="checkbox" class="apply-skin-comp-check" data-idx="' +
+                            escapeHtml(c.idx) + '" data-view="' + v + '" checked> ' +
+                            escapeHtml(c.type || ('Component ' + c.idx)) + '</label>';
+                    }).join('') +
+                    '</fieldset>';
+            }).join('');
+
             const overlay = document.createElement('div');
             overlay.className = 'snippet-modal-overlay';
             overlay.innerHTML = `
@@ -3377,8 +3435,17 @@
                             </select>
                             <div style="margin-top:4px;font-size:12px;color:#555;">${validSkins.length} skin(s) available</div>
                         </div>
+                        <div class="apply-skin-parts">
+                            <div class="apply-skin-parts-head">
+                                <span class="apply-skin-parts-title">Parts to apply</span>
+                                <span class="apply-skin-parts-count" aria-live="polite"></span>
+                                <button type="button" class="apply-skin-all">Select all</button>
+                                <button type="button" class="apply-skin-none">Clear</button>
+                            </div>
+                            ${componentChecklistHtml}
+                        </div>
                         <div class="snippet-modal-warning">
-                            <strong>Warning:</strong> This will overwrite all component styles in the target skin. Skin ID references will be automatically updated.
+                            <strong>Warning:</strong> This overwrites only the ticked components in the target skin. Components you untick are left exactly as they are. Skin ID references will be automatically updated.
                         </div>
                     </div>
                     <div class="snippet-modal-footer">
@@ -3398,6 +3465,47 @@
                 if (e.target === overlay) closeModal();
             });
 
+            // Parts checklist behavior
+            var applyConfirmBtn = overlay.querySelector('.apply-skin-confirm');
+            function pickedComponentIdxs() {
+                return Array.prototype.map.call(
+                    overlay.querySelectorAll('.apply-skin-comp-check:checked'),
+                    function(box) { return parseInt(box.getAttribute('data-idx'), 10); }
+                );
+            }
+            function refreshPartsState() {
+                var picked = pickedComponentIdxs().length;
+                var total = overlay.querySelectorAll('.apply-skin-comp-check').length;
+                overlay.querySelector('.apply-skin-parts-count').textContent = picked + ' of ' + total + ' selected';
+                applyConfirmBtn.disabled = picked === 0;
+                applyConfirmBtn.style.opacity = picked === 0 ? '0.5' : '';
+                Array.prototype.forEach.call(overlay.querySelectorAll('.apply-skin-group-check'), function(g) {
+                    var kids = overlay.querySelectorAll('.apply-skin-comp-check[data-view="' + g.getAttribute('data-view') + '"]');
+                    var on = overlay.querySelectorAll('.apply-skin-comp-check[data-view="' + g.getAttribute('data-view') + '"]:checked').length;
+                    g.checked = on === kids.length;
+                    g.indeterminate = on > 0 && on < kids.length;
+                });
+            }
+            function setAllParts(state) {
+                Array.prototype.forEach.call(overlay.querySelectorAll('.apply-skin-comp-check'), function(box) { box.checked = state; });
+                refreshPartsState();
+            }
+            overlay.querySelector('.apply-skin-all').addEventListener('click', function() { setAllParts(true); });
+            overlay.querySelector('.apply-skin-none').addEventListener('click', function() { setAllParts(false); });
+            overlay.addEventListener('change', function(e) {
+                var t = e.target;
+                if (t.classList && t.classList.contains('apply-skin-group-check')) {
+                    Array.prototype.forEach.call(
+                        overlay.querySelectorAll('.apply-skin-comp-check[data-view="' + t.getAttribute('data-view') + '"]'),
+                        function(box) { box.checked = t.checked; }
+                    );
+                }
+                if (t.classList && (t.classList.contains('apply-skin-group-check') || t.classList.contains('apply-skin-comp-check'))) {
+                    refreshPartsState();
+                }
+            });
+            refreshPartsState();
+
             // Apply handler
             overlay.querySelector('.apply-skin-confirm').addEventListener('click', async function() {
                 var targetSkinId = overlay.querySelector('#apply-skin-select').value;
@@ -3405,6 +3513,16 @@
                     alert('Please select a target skin.');
                     return;
                 }
+
+                var pickedIdxs = pickedComponentIdxs();
+                if (pickedIdxs.length === 0) {
+                    alert('Tick at least one part of the skin to apply.');
+                    return;
+                }
+                var componentsToApply = (savedSkinData.components || []).filter(function(c) {
+                    return pickedIdxs.indexOf(c.idx) !== -1;
+                });
+                var appliedCount = componentsToApply.length;
 
                 var targetSkin = validSkins.find(function(s) { return s.WidgetSkinID == targetSkinId; });
                 if (!targetSkin) {
@@ -3414,7 +3532,7 @@
 
                 var confirmed = confirm(
                     'Apply "' + savedSkinData.name + '" to "' + targetSkin.Name + '" (ID: ' + targetSkin.WidgetSkinID + ')?\n\n' +
-                    'This will overwrite ' + componentCount + ' component(s) in the target skin.'
+                    'This will overwrite ' + appliedCount + ' of ' + componentCount + ' component(s) in the target skin. The rest are left as they are.'
                 );
 
                 if (!confirmed) return;
@@ -3422,7 +3540,7 @@
                 // Send apply request to MAIN world helper
                 var applyResp = await sendHelperRequest('applySkin', {
                     targetSkinId: targetSkinId,
-                    components: savedSkinData.components,
+                    components: componentsToApply,
                     sourceSkinId: savedSkinData.sourceSkinID
                 });
 
